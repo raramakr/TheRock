@@ -23,6 +23,8 @@ Typical usage for the current shell (will set the CCACHE_CONFIGPATH var):
 
 import argparse
 from pathlib import Path
+import shlex
+import subprocess
 import sys
 
 THIS_DIR = Path(__file__).resolve().parent
@@ -49,6 +51,13 @@ CONFIG_PRESETS_MAP = {
         "max_size": "5G",
     },
 }
+
+
+def exec(args: list[str | Path], cwd: Path):
+    args = [str(arg) for arg in args]
+    print(f"++ Exec [{cwd}]$ {shlex.join(args)}")
+    sys.stdout.flush()
+    subprocess.check_call(args, cwd=str(cwd), stdin=subprocess.DEVNULL)
 
 
 def gen_config(dir: Path, compiler_check_file: Path, args: argparse.Namespace):
@@ -132,6 +141,16 @@ def run(args: argparse.Namespace):
 
     # Output options.
     print(f"export CCACHE_CONFIGPATH={config_file}")
+
+    # ccache sanity log check
+    print("ccache version:")
+    exec(["ccache", "--version"])
+    print("-----")
+    print("cache config:")
+    exec(["cat", "$CCACHE_CONFIGPATH"])
+    print("-----")
+    exec(["ccache", "-z"])
+    exec(["ccache", "-s", "-v"])
 
 
 def main(argv: list[str]):

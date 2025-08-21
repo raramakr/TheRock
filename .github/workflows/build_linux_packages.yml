@@ -61,15 +61,8 @@ jobs:
             --config-preset "github-oss-presubmit" \
             --dir "$(dirname $CCACHE_CONFIGPATH)" \
             --local-path "$CACHE_DIR/ccache"
-          df -h
-          echo "ccache version: $(ccache --version)"
-          echo "ccache config:"
-          echo "---"
-          cat "$CCACHE_CONFIGPATH"
-          echo "---"
-          ccache -z
-          ccache -s -v
           echo cmake --version
+          df -h
           echo "Installed Python versions:"
           ls -d /opt/python
           echo "python: $(which python), python3: $(which python3)"
