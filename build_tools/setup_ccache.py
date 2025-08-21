@@ -28,6 +28,7 @@ import subprocess
 import sys
 
 THIS_DIR = Path(__file__).resolve().parent
+THEROCK_DIR = THIS_DIR.parent.parent
 REPO_ROOT = THIS_DIR.parent
 POSIX_CCACHE_COMPILER_CHECK_PATH = THIS_DIR / "posix_ccache_compiler_check.py"
 POSIX_COMPILER_CHECK_SCRIPT = POSIX_CCACHE_COMPILER_CHECK_PATH.read_text()
@@ -144,13 +145,13 @@ def run(args: argparse.Namespace):
 
     # ccache sanity log check
     print("ccache version:")
-    exec(["ccache", "--version"])
+    exec(["ccache", "--version"], cwd=THEROCK_DIR)
     print("-----")
     print("cache config:")
-    exec(["cat", "$CCACHE_CONFIGPATH"])
+    exec(["cat", "$CCACHE_CONFIGPATH"], cwd=THEROCK_DIR)
     print("-----")
-    exec(["ccache", "-z"])
-    exec(["ccache", "-s", "-v"])
+    exec(["ccache", "-z"], cwd=THEROCK_DIR)
+    exec(["ccache", "-s", "-v"], cwd=THEROCK_DIR)
 
 
 def main(argv: list[str]):
