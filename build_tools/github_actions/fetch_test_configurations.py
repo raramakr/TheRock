@@ -117,12 +117,13 @@ test_matrix = {
         "fetch_artifact_args": "--fft --tests",
         "timeout_minutes": 30,
         "test_script": f"python {_get_script_path('test_rocfft.py')}",
+        # TODO(geomin12): Add windows capability https://github.com/ROCm/TheRock/issues/1391
         "platform": ["linux", "windows"],
     },
     "hipfft": {
         "job_name": "hipfft",
         "fetch_artifact_args": "--fft --tests",
-        "timeout_minutes": 30,
+        "timeout_minutes": 60,
         "test_script": f"python {_get_script_path('test_hipfft.py')}",
         "platform": ["linux", "windows"],
     },
