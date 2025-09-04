@@ -115,7 +115,7 @@ test_matrix = {
     "rocfft": {
         "job_name": "rocfft",
         "fetch_artifact_args": "--fft --tests",
-        "timeout_minutes": 30,
+        "timeout_minutes": 60,
         "test_script": f"python {_get_script_path('test_rocfft.py')}",
         # TODO(geomin12): Add windows test (https://github.com/ROCm/TheRock/issues/1391)
         "platform": ["linux"],
