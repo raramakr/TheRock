@@ -236,7 +236,7 @@ jobs:
         if: ${{ github.repository_owner == 'ROCm' }}
         run: |
           pip install boto3 packaging
-          python ./build_tools/s3_index/index_generation_s3_tar.py
+          python ./build_tools/index_generation_s3_tar.py
 
       - name: Trigger building PyTorch wheels
         if: ${{ github.repository_owner == 'ROCm' }}
