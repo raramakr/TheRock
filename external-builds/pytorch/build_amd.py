@@ -153,7 +153,7 @@ def is_hip_clang() -> bool:
     return True
 
 
-# TODO Remove once the following submodules are updated
+# TODO Remove once the following submodules are updated TEST
 hip_platform_files = [
     "third_party/fbgemm/fbgemm_gpu/CMakeLists.txt",
     "third_party/fbgemm/fbgemm_gpu/cmake/Hip.cmake",

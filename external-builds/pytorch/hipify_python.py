@@ -1169,7 +1169,7 @@ def hipify(
 
     print(bcolors.OKGREEN + "Successfully preprocessed all matching files." + bcolors.ENDC, file=sys.stderr)
 
-    # Show detailed summary
+    # Show detailed summary TEST
     if show_detailed:
         compute_stats(stats)
 
