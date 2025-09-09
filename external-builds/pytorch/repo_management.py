@@ -184,7 +184,6 @@ def apply_all_patches(
         )
 
 
-# repo_hashtag_to_patches_dir_name('2.7.0-rc9') -> '2.7.0'
 def repo_hashtag_to_patches_dir_name(version_ref: str) -> str:
     pos = version_ref.find("-")
     if pos != -1:
@@ -196,19 +195,105 @@ def get_patches_dir_name(args: argparse.Namespace) -> str | None:
     patchset_name = args.patchset
     if patchset_name is not None:
         return patchset_name
-
     hashtag = args.repo_hashtag
     if hashtag is not None:
         return hashtag
     return None
 
 
+def get_third_party_directories(repo_path: Path) -> list[Path]:
+    """Gets paths of all third_party directories in the repository."""
+    third_party_path = repo_path / "third_party"
+    if not third_party_path.exists():
+        print(f"Error: third_party directory {third_party_path} does not exist")
+        return []
+    directories = []
+    for item in third_party_path.iterdir():
+        if item.is_dir():
+            directories.append(item)
+    return directories
+
+
 def do_hipify(args: argparse.Namespace):
     repo_dir: Path = args.repo
     print(f"Hipifying {repo_dir}")
+
+    # Copy custom build_amd.py and hipify_python.py
+    script_dir = Path(__file__).parent
     build_amd_path = repo_dir / "tools" / "amd_build" / "build_amd.py"
+    custom_build_amd_path = script_dir / "build_amd.py"
+    hipify_python_path = repo_dir / "torch" / "utils" / "hipify" / "hipify_python.py"
+    custom_hipify_python_path = script_dir / "hipify_python.py"
+
+    if not custom_build_amd_path.exists():
+        print(f"Error: custom build_amd.py not found at {custom_build_amd_path}")
+        sys.exit(1)
+    if not custom_hipify_python_path.exists():
+        print(f"Error: hipify_python.py not found at {custom_hipify_python_path}")
+        sys.exit(1)
+
+    print(
+        f"Copying custom build_amd.py from {custom_build_amd_path} to {build_amd_path}"
+    )
+    build_amd_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(custom_build_amd_path, build_amd_path)
+
+    print(
+        f"Copying debug-enabled hipify_python.py from {custom_hipify_python_path} to {hipify_python_path}"
+    )
+    hipify_python_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(custom_hipify_python_path, hipify_python_path)
+
+    # Commit copied files
+    try:
+        exec(["git", "add", str(build_amd_path), str(hipify_python_path)], cwd=repo_dir)
+        exec(
+            ["git", "commit", "-m", "Add custom build_amd.py and hipify_python.py"],
+            cwd=repo_dir,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to commit build_amd.py and hipify_python.py: {e}")
+        sys.exit(1)
+
+    # Check third_party directories before hipification
+    third_party_dirs = get_third_party_directories(repo_dir)
+    dir_status_before = {p: p.exists() for p in third_party_dirs}
+    print("Third-party directory status before hipify:")
+    for path, exists in dir_status_before.items():
+        print(f"  {path}: {'exists' if exists else 'missing'}")
+
+    # Run hipification
     if build_amd_path.exists():
-        exec([sys.executable, build_amd_path], cwd=repo_dir)
+        try:
+            result = subprocess.run(
+                [sys.executable, build_amd_path],
+                cwd=str(repo_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            if result.returncode != 0:
+                print(f"Error: Failed to run build_amd.py: {result.stdout}")
+                sys.exit(1)
+            print(f"build_amd.py output: {result.stdout}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error: Failed to run build_amd.py: {e.output}")
+            sys.exit(1)
+    else:
+        print(f"Error: build_amd.py not found at {build_amd_path}")
+        sys.exit(1)
+
+    # Check third_party directories after hipification
+    dir_status_after = {p: p.exists() for p in third_party_dirs}
+    print("Checking third_party directories after hipify (logging only missing):")
+    any_missing = False
+    for path in third_party_dirs:
+        if not dir_status_after[path] and dir_status_before[path]:
+            any_missing = True
+            print(f"  {path}: missing after hipify (was present before)")
+
+    if not any_missing:
+        print("All third_party directories present after hipify")
 
 
 def commit_hipify(args: argparse.Namespace):
@@ -261,24 +346,6 @@ def do_checkout(args: argparse.Namespace, custom_hipify=do_hipify):
     except subprocess.CalledProcessError:
         print("Failed to fetch git submodules")
         sys.exit(1)
-    # Delete directories which are the source of flaky pytorch
-    # checkouts on Windows and are not used during the build.
-    # See https://github.com/ROCm/TheRock/issues/1149.
-    exclude_paths = [
-        repo_dir
-        / "third_party"
-        / "onnx"
-        / "onnx"
-        / "backend"
-        / "test"
-        / "data"
-        / "node",
-        repo_dir / "third_party" / "opentelemetry-cpp" / "tools" / "vcpkg" / "ports",
-    ]
-    for exclude_path in exclude_paths:
-        if exclude_path.exists():
-            print(f"Removing excluded directory: {exclude_path}")
-            shutil.rmtree(exclude_path, ignore_errors=True)
     exec(
         [
             "git",
@@ -327,9 +394,6 @@ def do_save_patches(args: argparse.Namespace):
         save_repo_patches(args.repo / relative_sm_path, patches_dir / relative_sm_path)
 
 
-# Reads the ROCm maintained "related_commits" file from the given pytorch dir.
-# If present, selects the given os and project, returning origin, hashtag and
-# "rocm-custom" patchset. Otherwise, returns the given defaults.
 def read_pytorch_rocm_pins(
     pytorch_dir: Path,
     os: str,
