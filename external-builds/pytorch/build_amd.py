@@ -4,10 +4,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add the hipify package directory to sys.path to resolve relative imports
-hipify_dir = Path("B:/src/torch/torch/utils/hipify")
-sys.path.insert(0, str(hipify_dir))
-from hipify_python import hipify, GeneratedFileCleaner
+# Add the parent directory of hipify to sys.path to resolve relative imports
+hipify_parent_dir = Path("B:/src/torch/torch/utils")
+sys.path.insert(0, str(hipify_parent_dir))
+from hipify.hipify_python import hipify, GeneratedFileCleaner
 
 # NOTE: `tools/amd_build/build_amd.py` could be a symlink.
 # The behavior of `symlink / '..'` is different from `symlink.parent`.
