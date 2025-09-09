@@ -4,10 +4,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add hipify package directory to sys.path
-hipify_dir = Path("B:/src/torch/torch/utils/hipify")
-sys.path.insert(0, str(hipify_dir))
-from hipify_python import hipify, GeneratedFileCleaner
+# Add the parent directory of hipify to sys.path to resolve relative imports
+hipify_parent_dir = Path("B:/src/torch/torch/utils")
+sys.path.insert(0, str(hipify_parent_dir))
+from hipify.hipify_python import hipify, GeneratedFileCleaner
 
 REPO_ROOT = (Path(__file__).absolute() / os.path.pardir / os.path.pardir / os.path.pardir).resolve()
 

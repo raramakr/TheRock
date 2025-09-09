@@ -18,7 +18,7 @@
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO the WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -31,8 +31,8 @@ import shutil
 import sys
 import os
 
-import constants
-import cuda_to_hip_mappings
+from . import constants
+from .cuda_to_hip_mappings import CUDA_TO_HIP_MAPPINGS, MATH_TRANSPILATIONS
 
 from typing import Optional
 from collections.abc import Iterator
@@ -98,7 +98,7 @@ class bcolors:
 # hipify and compilation in a with instantiating this context manager class
 # with keep_intermediates=False.
 # The main usecase is the cpp_extensions, specifically the load method.
-# It is a a good idea to keep intermediates (in case of errors or to
+# It is a good idea to keep intermediates (in case of errors or to
 # not recompile unchanged files), but in cases where you don't want to
 # keep them (e.g. in the CI), this can be used to remove files.
 class GeneratedFileCleaner:
@@ -438,8 +438,8 @@ def replace_math_functions(input_string):
         std:: math function calls inside device code
     """
     output_string = input_string
-    for func in cuda_to_hip_mappings.MATH_TRANSPILATIONS:
-        output_string = output_string.replace(fr'{func}(', f'{cuda_to_hip_mappings.MATH_TRANSPILATIONS[func]}(')
+    for func in MATH_TRANSPILATIONS:
+        output_string = output_string.replace(fr'{func}(', f'{MATH_TRANSPILATIONS[func]}(')
     return output_string
 
 RE_SYNCTHREADS = re.compile(r":?:?\b(__syncthreads)\b(\w*\()")
@@ -697,7 +697,7 @@ PYTORCH_MAP: dict[str, object] = {}
 # Similarly, "linalg" files require rocBLAS -> hipSOLVER so they also need special handling.
 PYTORCH_SPECIAL_MAP = {}
 
-for mapping in cuda_to_hip_mappings.CUDA_TO_HIP_MAPPINGS:
+for mapping in CUDA_TO_HIP_MAPPINGS:
     assert isinstance(mapping, Mapping)
     for src, value in mapping.items():
         dst = value[0]
