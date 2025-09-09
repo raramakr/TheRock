@@ -18,7 +18,7 @@
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO the WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -31,9 +31,8 @@ import shutil
 import sys
 import os
 
-from . import constants
-from .cuda_to_hip_mappings import CUDA_TO_HIP_MAPPINGS
-from .cuda_to_hip_mappings import MATH_TRANSPILATIONS
+import constants
+import cuda_to_hip_mappings
 
 from typing import Optional
 from collections.abc import Iterator
@@ -439,8 +438,8 @@ def replace_math_functions(input_string):
         std:: math function calls inside device code
     """
     output_string = input_string
-    for func in MATH_TRANSPILATIONS:
-        output_string = output_string.replace(fr'{func}(', f'{MATH_TRANSPILATIONS[func]}(')
+    for func in cuda_to_hip_mappings.MATH_TRANSPILATIONS:
+        output_string = output_string.replace(fr'{func}(', f'{cuda_to_hip_mappings.MATH_TRANSPILATIONS[func]}(')
     return output_string
 
 RE_SYNCTHREADS = re.compile(r":?:?\b(__syncthreads)\b(\w*\()")
@@ -533,6 +532,8 @@ def get_hip_file_path(rel_filepath, is_pytorch_extension=False):
     dirpath = dirpath.replace('cuda', 'hip')
     dirpath = dirpath.replace('CUDA', 'HIP')
     dirpath = dirpath.replace('THC', 'THH')
+    root = root.replace('cuda', 'hip')
+    root = root.replace('CUDA', 'HIP')
     # Special case to handle caffe2/core/THCCachingAllocator
     if dirpath != "caffe2/core":
         root = root.replace('THC', 'THH')
@@ -696,7 +697,7 @@ PYTORCH_MAP: dict[str, object] = {}
 # Similarly, "linalg" files require rocBLAS -> hipSOLVER so they also need special handling.
 PYTORCH_SPECIAL_MAP = {}
 
-for mapping in CUDA_TO_HIP_MAPPINGS:
+for mapping in cuda_to_hip_mappings.CUDA_TO_HIP_MAPPINGS:
     assert isinstance(mapping, Mapping)
     for src, value in mapping.items():
         dst = value[0]
@@ -1063,67 +1064,3 @@ def hipify(
     else:
         print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
     return HIPIFY_FINAL_RESULT
-
-#!/usr/bin/env python3
-import os
-import sys
-from pathlib import Path
-# Import hipify_python as a module from the local directory
-sys.path.insert(0, str(Path(__file__).parent))
-import hipify_python
-
-def main():
-    print("DEBUG: Starting build_amd.py")
-    project_directory = "B:/src/torch"
-    output_directory = "B:/src/torch_amd"
-    
-    # Define includes list (customizable for debugging)
-    includes = [
-        "aten/src/ATen/cuda/*",
-        "c10/cuda/*",
-        "torch/*",
-        "third_party/nvfuser/*",
-        "third_party/fbgemm/*",
-        "third_party/gloo/*",
-        "third_party/kineto/*",
-        # Uncomment to include all third_party directories
-        # "third_party/*",
-    ]
-    print(f"DEBUG: build_amd.py includes={includes}")
-    
-    # Debug: Log third_party directories before hipification
-    third_party_path = os.path.join(project_directory, "third_party")
-    if os.path.exists(third_party_path):
-        third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
-        print(f"DEBUG: Third-party directories before hipify: {third_party_dirs}")
-    else:
-        print(f"DEBUG: Third-party directory {third_party_path} does not exist before hipify")
-
-    # Run hipify with explicit keep_intermediates
-    try:
-        clean_ctx = hipify_python.GeneratedFileCleaner(keep_intermediates=True)
-        print(f"DEBUG: Calling hipify with keep_intermediates={clean_ctx.keep_intermediates}")
-        hipify_python.hipify(
-            project_directory=project_directory,
-            output_directory=output_directory,
-            includes=includes,
-            show_detailed=True,
-            hip_clang_launch=False,
-            is_pytorch_extension=False,
-            clean_ctx=clean_ctx,
-        )
-        print("DEBUG: build_amd.py completed successfully")
-    except Exception as e:
-        print(f"Error: build_amd.py failed: {e}")
-        sys.exit(1)
-    
-    # Debug: Log third_party directories after hipification
-    third_party_path = os.path.join(output_directory, "third_party")
-    if os.path.exists(third_party_path):
-        third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
-        print(f"DEBUG: Third-party directories after hipify: {third_party_dirs}")
-    else:
-        print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
-
-if __name__ == "__main__":
-    main()
