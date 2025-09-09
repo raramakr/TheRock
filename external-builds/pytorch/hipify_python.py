@@ -945,7 +945,6 @@ def extract_arguments(start, string):
         if string[current_position] == "(":
             closures["("] += 1
         elif string[current_position] == ")":
-            closures FINISH
             closures["("] -= 1
         elif string[current_position] == "<":
             closures["<"] += 1
