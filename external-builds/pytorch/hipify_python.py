@@ -1068,7 +1068,9 @@ def hipify(
 import os
 import sys
 from pathlib import Path
-from torch.utils.hipify import hipify_python
+# Import hipify_python from the local directory
+sys.path.insert(0, str(Path(__file__).parent))
+from hipify_python import hipify, GeneratedFileCleaner
 
 def main():
     print("DEBUG: Starting build_amd.py")
@@ -1099,9 +1101,9 @@ def main():
 
     # Run hipify with explicit keep_intermediates
     try:
-        clean_ctx = hipify_python.GeneratedFileCleaner(keep_intermediates=True)
+        clean_ctx = GeneratedFileCleaner(keep_intermediates=True)
         print(f"DEBUG: Calling hipify with keep_intermediates={clean_ctx.keep_intermediates}")
-        hipify_python.hipify(
+        hipify(
             project_directory=project_directory,
             output_directory=output_directory,
             includes=includes,
@@ -1125,3 +1127,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
