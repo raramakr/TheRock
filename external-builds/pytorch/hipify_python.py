@@ -1068,9 +1068,9 @@ def hipify(
 import os
 import sys
 from pathlib import Path
-# Import hipify_python from the local directory
+# Import hipify_python as a module from the local directory
 sys.path.insert(0, str(Path(__file__).parent))
-from hipify_python import hipify, GeneratedFileCleaner
+import hipify_python
 
 def main():
     print("DEBUG: Starting build_amd.py")
@@ -1101,9 +1101,9 @@ def main():
 
     # Run hipify with explicit keep_intermediates
     try:
-        clean_ctx = GeneratedFileCleaner(keep_intermediates=True)
+        clean_ctx = hipify_python.GeneratedFileCleaner(keep_intermediates=True)
         print(f"DEBUG: Calling hipify with keep_intermediates={clean_ctx.keep_intermediates}")
-        hipify(
+        hipify_python.hipify(
             project_directory=project_directory,
             output_directory=output_directory,
             includes=includes,
@@ -1127,4 +1127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
