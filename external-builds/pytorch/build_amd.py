@@ -3,10 +3,14 @@ import argparse
 import os
 import sys
 from pathlib import Path
+import importlib.util
 
-# Add the hipify package directory to sys.path
-hipify_dir = Path("B:/src/torch/torch/utils/hipify")
-sys.path.insert(0, str(hipify_dir))
+# Load hipify_python.py as a module
+hipify_path = Path("B:/src/torch/torch/utils/hipify/hipify_python.py")
+spec = importlib.util.spec_from_file_location("hipify_python", hipify_path)
+hipify_module = importlib.util.module_from_spec(spec)
+sys.modules["hipify_python"] = hipify_module
+spec.loader.exec_module(hipify_module)
 from hipify_python import hipify, GeneratedFileCleaner
 
 # NOTE: `tools/amd_build/build_amd.py` could be a symlink.
