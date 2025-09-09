@@ -4,152 +4,64 @@ import os
 import sys
 from pathlib import Path
 
-# Add the hipify package directory to sys.path
+# Add hipify package directory to sys.path
 hipify_dir = Path("B:/src/torch/torch/utils/hipify")
 sys.path.insert(0, str(hipify_dir))
 from hipify_python import hipify, GeneratedFileCleaner
 
-# NOTE: `tools/amd_build/build_amd.py` could be a symlink.
-# The behavior of `symlink / '..'` is different from `symlink.parent`.
-# Use `pardir` three times rather than using `path.parents[2]`.
-REPO_ROOT = (
-    Path(__file__).absolute() / os.path.pardir / os.path.pardir / os.path.pardir
-).resolve()
+REPO_ROOT = (Path(__file__).absolute() / os.path.pardir / os.path.pardir / os.path.pardir).resolve()
 
-parser = argparse.ArgumentParser(
-    description="Top-level script for HIPifying, filling in most common parameters"
-)
-parser.add_argument(
-    "--out-of-place-only",
-    action="store_true",
-    help="Whether to only run hipify out-of-place on source files",
-)
-parser.add_argument(
-    "--project-directory",
-    type=str,
-    default="",
-    help="The root of the project.",
-    required=False,
-)
-parser.add_argument(
-    "--output-directory",
-    type=str,
-    default="",
-    help="The directory to store the hipified project",
-    required=False,
-)
-parser.add_argument(
-    "--extra-include-dir",
-    type=str,
-    default=[],
-    nargs="+",
-    help="The list of extra directories in caffe2 to hipify",
-    required=False,
-)
+parser = argparse.ArgumentParser(description="Top-level script for HIPifying")
+parser.add_argument("--out-of-place-only", action="store_true", help="Run hipify out-of-place")
+parser.add_argument("--project-directory", type=str, default="", help="Project root")
+parser.add_argument("--output-directory", type=str, default="", help="Hipified project directory")
+parser.add_argument("--extra-include-dir", type=str, default=[], nargs="+", help="Extra caffe2 directories")
 
 args = parser.parse_args()
 
-# NOTE: `tools/amd_build/build_amd.py` could be a symlink.
 amd_build_dir = os.path.dirname(os.path.realpath(__file__))
 proj_dir = os.path.dirname(os.path.dirname(amd_build_dir))
-
 if args.project_directory:
     proj_dir = args.project_directory
-
 out_dir = proj_dir
 if args.output_directory:
     out_dir = args.output_directory
 
 includes = [
-    "caffe2/operators/*",
-    "caffe2/sgd/*",
-    "caffe2/image/*",
-    "caffe2/transforms/*",
-    "caffe2/video/*",
-    "caffe2/distributed/*",
-    "caffe2/queue/*",
-    "caffe2/contrib/aten/*",
-    "binaries/*",
-    "caffe2/**/*_test*",
-    "caffe2/core/*",
-    "caffe2/db/*",
-    "caffe2/utils/*",
-    "caffe2/contrib/gloo/*",
-    "caffe2/contrib/nccl/*",
-    "c10/cuda/*",
-    "c10/cuda/test/CMakeLists.txt",
-    "modules/*",
-    "third_party/nvfuser/*",
-    # PyTorch paths
-    # Keep this synchronized with is_pytorch_file in hipify_python.py
-    "aten/src/ATen/cuda/*",
-    "aten/src/ATen/native/cuda/*",
-    "aten/src/ATen/native/cudnn/*",
-    "aten/src/ATen/native/quantized/cudnn/*",
-    "aten/src/ATen/native/nested/cuda/*",
-    "aten/src/ATen/native/sparse/cuda/*",
-    "aten/src/ATen/native/quantized/cuda/*",
-    "aten/src/ATen/native/transformers/cuda/attention_backward.cu",
-    "aten/src/ATen/native/transformers/cuda/attention.cu",
-    "aten/src/ATen/native/transformers/cuda/sdp_utils.cpp",
-    "aten/src/ATen/native/transformers/cuda/sdp_utils.h",
-    "aten/src/ATen/native/transformers/cuda/mem_eff_attention/debug_utils.h",
+    "caffe2/operators/*", "caffe2/sgd/*", "caffe2/image/*", "caffe2/transforms/*",
+    "caffe2/video/*", "caffe2/distributed/*", "caffe2/queue/*", "caffe2/contrib/aten/*",
+    "binaries/*", "caffe2/**/*_test*", "caffe2/core/*", "caffe2/db/*", "caffe2/utils/*",
+    "caffe2/contrib/gloo/*", "caffe2/contrib/nccl/*", "c10/cuda/*", "c10/cuda/test/CMakeLists.txt",
+    "modules/*", "third_party/nvfuser/*", "aten/src/ATen/cuda/*", "aten/src/ATen/native/cuda/*",
+    "aten/src/ATen/native/cudnn/*", "aten/src/ATen/native/quantized/cudnn/*",
+    "aten/src/ATen/native/nested/cuda/*", "aten/src/ATen/native/sparse/cuda/*",
+    "aten/src/ATen/native/quantized/cuda/*", "aten/src/ATen/native/transformers/cuda/attention_backward.cu",
+    "aten/src/ATen/native/transformers/cuda/attention.cu", "aten/src/ATen/native/transformers/cuda/sdp_utils.cpp",
+    "aten/src/ATen/native/transformers/cuda/sdp_utils.h", "aten/src/ATen/native/transformers/cuda/mem_eff_attention/debug_utils.h",
     "aten/src/ATen/native/transformers/cuda/mem_eff_attention/gemm_kernel_utils.h",
-    "aten/src/ATen/native/transformers/cuda/mem_eff_attention/pytorch_utils.h",
-    "aten/src/THC/*",
-    "aten/src/ATen/test/*",
-    # CMakeLists.txt isn't processed by default, but there are a few
-    # we do want to handle, so explicitly specify them
-    "aten/src/THC/CMakeLists.txt",
-    "torch/*",
-    "tools/autograd/templates/python_variable_methods.cpp",
-    "torch/csrc/stable/*",
+    "aten/src/ATen/native/transformers/cuda/mem_eff_attention/pytorch_utils.h", "aten/src/THC/*",
+    "aten/src/ATen/test/*", "aten/src/THC/CMakeLists.txt", "torch/*",
+    "tools/autograd/templates/python_variable_methods.cpp", "torch/csrc/stable/*",
 ]
-
 includes = [os.path.join(proj_dir, include) for include in includes]
-
 for new_dir in args.extra_include_dir:
     abs_new_dir = os.path.join(proj_dir, new_dir)
     if os.path.exists(abs_new_dir):
-        abs_new_dir = os.path.join(abs_new_dir, "**/*")
-        includes.append(abs_new_dir)
+        includes.append(os.path.join(abs_new_dir, "**/*"))
 
 ignores = [
-    "caffe2/operators/depthwise_3x3_conv_op_cudnn.cu",
-    "caffe2/operators/pool_op_cudnn.cu",
-    "*/hip/*",
-    # These files are compatible with both cuda and hip
-    "aten/src/ATen/core/*",
-    # Correct path to generate HIPConfig.h:
-    #   CUDAConfig.h.in -> (amd_build) HIPConfig.h.in -> (cmake) HIPConfig.h
-    "aten/src/ATen/cuda/CUDAConfig.h",
-    "third_party/nvfuser/csrc/codegen.cpp",
-    "third_party/nvfuser/runtime/block_reduction.cu",
-    "third_party/nvfuser/runtime/block_sync_atomic.cu",
-    "third_party/nvfuser/runtime/block_sync_default_rocm.cu",
-    "third_party/nvfuser/runtime/broadcast.cu",
-    "third_party/nvfuser/runtime/grid_reduction.cu",
-    "third_party/nvfuser/runtime/helpers.cu",
-    "torch/csrc/jit/codegen/fuser/cuda/resource_strings.h",
-    "torch/csrc/jit/tensorexpr/ir_printer.cpp",
-    # generated files we shouldn't frob
-    "torch/lib/tmp_install/*",
-    "torch/include/*",
+    "caffe2/operators/depthwise_3x3_conv_op_cudnn.cu", "caffe2/operators/pool_op_cudnn.cu",
+    "*/hip/*", "aten/src/ATen/core/*", "aten/src/ATen/cuda/CUDAConfig.h",
+    "third_party/nvfuser/csrc/codegen.cpp", "third_party/nvfuser/runtime/block_reduction.cu",
+    "third_party/nvfuser/runtime/block_sync_atomic.cu", "third_party/nvfuser/runtime/block_sync_default_rocm.cu",
+    "third_party/nvfuser/runtime/broadcast.cu", "third_party/nvfuser/runtime/grid_reduction.cu",
+    "third_party/nvfuser/runtime/helpers.cu", "torch/csrc/jit/codegen/fuser/cuda/resource_strings.h",
+    "torch/csrc/jit/tensorexpr/ir_printer.cpp", "torch/lib/tmp_install/*", "torch/include/*",
 ]
-
 ignores = [os.path.join(proj_dir, ignore) for ignore in ignores]
 
-# Check if the compiler is hip-clang.
-#
-# This used to be a useful function but now we can safely always assume hip-clang.
-# Leaving the function here avoids bc-linter errors.
-def is_hip_clang() -> bool:
-    return True
-
-# TODO Remove once the following submodules are updated
 hip_platform_files = [
-    "third_party/fbgemm/fbgemm_gpu/CMakeLists.txt",
-    "third_party/fbgemm/fbgemm_gpu/cmake/Hip.cmake",
+    "third_party/fbgemm/fbgemm_gpu/CMakeLists.txt", "third_party/fbgemm/fbgemm_gpu/cmake/Hip.cmake",
     "third_party/fbgemm/fbgemm_gpu/codegen/embedding_backward_dense_host.cpp",
     "third_party/fbgemm/fbgemm_gpu/codegen/embedding_backward_split_host_template.cpp",
     "third_party/fbgemm/fbgemm_gpu/codegen/embedding_backward_split_template.cu",
@@ -172,6 +84,9 @@ hip_platform_files = [
     "third_party/tensorpipe/cmake/Hip.cmake",
 ]
 
+def is_hip_clang() -> bool:
+    return True
+
 def remove_hcc(line: str) -> str:
     line = line.replace("HIP_PLATFORM_HCC", "HIP_PLATFORM_AMD")
     line = line.replace("HIP_HCC_FLAGS", "HIP_CLANG_FLAGS")
@@ -187,7 +102,6 @@ else:
 
 for hip_platform_file in hip_platform_files:
     hip_platform_file = os.path.join(proj_dir, hip_platform_file)
-    do_write = False
     if os.path.exists(hip_platform_file):
         with open(hip_platform_file) as sources:
             lines = sources.readlines()

@@ -98,7 +98,7 @@ class bcolors:
 # hipify and compilation in a with instantiating this context manager class
 # with keep_intermediates=False.
 # The main usecase is the cpp_extensions, specifically the load method.
-# It is a good idea to keep intermediates (in case of errors or to
+# It is a a good idea to keep intermediates (in case of errors or to
 # not recompile unchanged files), but in cases where you don't want to
 # keep them (e.g. in the CI), this can be used to remove files.
 class GeneratedFileCleaner:
