@@ -76,7 +76,6 @@ def get_all_repositories(root_path: Path) -> list[Path]:
 
 def git_config_ignore_submodules(repo_path: Path):
     """Sets the `submodule.<name>.ignore = true` git config option for all submodules.
-
     This causes all submodules to not show up in status or diff reports, which is
     appropriate for our case, since we make arbitrary changes and patches to them.
     Note that pytorch seems to somewhat arbitrarily have some already set this way.
@@ -184,6 +183,7 @@ def apply_all_patches(
         )
 
 
+# repo_hashtag_to_patches_dir_name('2.7.0-rc9') -> '2.7.0'
 def repo_hashtag_to_patches_dir_name(version_ref: str) -> str:
     pos = version_ref.find("-")
     if pos != -1:
@@ -218,6 +218,11 @@ def do_hipify(args: argparse.Namespace):
     repo_dir: Path = args.repo
     print(f"Hipifying {repo_dir}")
 
+    # Skip copying and hipification for torchaudio and torchvision
+    if str(repo_dir).endswith("audio") or str(repo_dir).endswith("vision"):
+        print(f"Skipping hipification for {repo_dir} as it is not required")
+        return
+
     # Copy custom build_amd.py and hipify_python.py
     script_dir = Path(__file__).parent
     build_amd_path = repo_dir / "tools" / "amd_build" / "build_amd.py"
@@ -244,15 +249,37 @@ def do_hipify(args: argparse.Namespace):
     hipify_python_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(custom_hipify_python_path, hipify_python_path)
 
-    # Commit copied files
+    # Check if there are changes to commit
     try:
-        exec(["git", "add", str(build_amd_path), str(hipify_python_path)], cwd=repo_dir)
-        exec(
-            ["git", "commit", "-m", "Add custom build_amd.py and hipify_python.py"],
-            cwd=repo_dir,
+        status_output = subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=str(repo_dir),
+            stderr=subprocess.STDOUT,
+            text=True,
         )
+        if not status_output.strip():
+            print("No changes to commit for build_amd.py and hipify_python.py")
+        else:
+            # Commit copied files
+            try:
+                exec(
+                    ["git", "add", str(build_amd_path), str(hipify_python_path)],
+                    cwd=repo_dir,
+                )
+                exec(
+                    [
+                        "git",
+                        "commit",
+                        "-m",
+                        "Add custom build_amd.py and hipify_python.py",
+                    ],
+                    cwd=repo_dir,
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"Error: Failed to commit build_amd.py and hipify_python.py: {e}")
+                sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to commit build_amd.py and hipify_python.py: {e}")
+        print(f"Error checking git status: {e}")
         sys.exit(1)
 
     # Check third_party directories before hipification
@@ -328,7 +355,6 @@ def do_checkout(args: argparse.Namespace, custom_hipify=do_hipify):
         exec(["git", "init", "--initial-branch=main"], cwd=repo_dir)
         exec(["git", "config", "advice.detachedHead", "false"], cwd=repo_dir)
         exec(["git", "remote", "add", "origin", args.gitrepo_origin], cwd=repo_dir)
-
     # Fetch and checkout.
     fetch_args = []
     if args.depth is not None:
@@ -358,7 +384,6 @@ def do_checkout(args: argparse.Namespace, custom_hipify=do_hipify):
         stdout_devnull=True,
     )
     git_config_ignore_submodules(repo_dir)
-
     # Base patches.
     if args.patch and patches_dir_name:
         apply_all_patches(
@@ -367,12 +392,10 @@ def do_checkout(args: argparse.Namespace, custom_hipify=do_hipify):
             args.repo_name,
             "base",
         )
-
     # Hipify.
     if args.hipify:
         custom_hipify(args)
         commit_hipify(args)
-
     # Hipified patches.
     if args.hipify and args.patch and patches_dir_name:
         apply_all_patches(
@@ -420,6 +443,5 @@ def read_pytorch_rocm_pins(
                 print(f"WARNING: Could not parse related_commits line: {line}")
             if rec_os == os and rec_project == project:
                 return rec_origin, rec_commit, "rocm-custom", True
-
     # Not found.
     return default_origin, default_hashtag, default_patchset, False
