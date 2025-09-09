@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
+
+
 import argparse
 import os
 import sys
 from pathlib import Path
 
-# Add the parent directory of the hipify package to sys.path
-hipify_parent_dir = Path("B:/src/torch/torch/utils")
-sys.path.insert(0, str(hipify_parent_dir))
-from hipify.hipify_python import hipify, GeneratedFileCleaner
 
 # NOTE: `tools/amd_build/build_amd.py` could be a symlink.
 # The behavior of `symlink / '..'` is different from `symlink.parent`.
@@ -15,6 +13,10 @@ from hipify.hipify_python import hipify, GeneratedFileCleaner
 REPO_ROOT = (
     Path(__file__).absolute() / os.path.pardir / os.path.pardir / os.path.pardir
 ).resolve()
+sys.path.append(str(REPO_ROOT / "torch" / "utils"))
+
+from hipify import hipify_python  # type: ignore[import]
+
 
 parser = argparse.ArgumentParser(
     description="Top-level script for HIPifying, filling in most common parameters"
@@ -24,6 +26,7 @@ parser.add_argument(
     action="store_true",
     help="Whether to only run hipify out-of-place on source files",
 )
+
 parser.add_argument(
     "--project-directory",
     type=str,
@@ -31,6 +34,7 @@ parser.add_argument(
     help="The root of the project.",
     required=False,
 )
+
 parser.add_argument(
     "--output-directory",
     type=str,
@@ -38,6 +42,7 @@ parser.add_argument(
     help="The directory to store the hipified project",
     required=False,
 )
+
 parser.add_argument(
     "--extra-include-dir",
     type=str,
@@ -139,12 +144,14 @@ ignores = [
 
 ignores = [os.path.join(proj_dir, ignore) for ignore in ignores]
 
+
 # Check if the compiler is hip-clang.
 #
 # This used to be a useful function but now we can safely always assume hip-clang.
 # Leaving the function here avoids bc-linter errors.
 def is_hip_clang() -> bool:
     return True
+
 
 # TODO Remove once the following submodules are updated
 hip_platform_files = [
@@ -172,21 +179,14 @@ hip_platform_files = [
     "third_party/tensorpipe/cmake/Hip.cmake",
 ]
 
+
 def remove_hcc(line: str) -> str:
     line = line.replace("HIP_PLATFORM_HCC", "HIP_PLATFORM_AMD")
     line = line.replace("HIP_HCC_FLAGS", "HIP_CLANG_FLAGS")
     return line
 
-# Debug: Log third_party directories before hipification
-third_party_path = os.path.join(proj_dir, "third_party")
-if os.path.exists(third_party_path):
-    third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
-    print(f"DEBUG: Third-party directories before hipify: {third_party_dirs}")
-else:
-    print(f"DEBUG: Third-party directory {third_party_path} does not exist before hipify")
 
 for hip_platform_file in hip_platform_files:
-    hip_platform_file = os.path.join(proj_dir, hip_platform_file)
     do_write = False
     if os.path.exists(hip_platform_file):
         with open(hip_platform_file) as sources:
@@ -200,34 +200,18 @@ for hip_platform_file in hip_platform_files:
                     sources.write(line)
             print(f"{hip_platform_file} updated")
 
-# Run hipify with explicit keep_intermediates
-try:
-    clean_ctx = GeneratedFileCleaner(keep_intermediates=True)
-    print(f"DEBUG: Calling hipify with keep_intermediates={clean_ctx.keep_intermediates}")
-    hipify(
-        project_directory=proj_dir,
-        output_directory=out_dir,
-        includes=includes,
-        ignores=ignores,
-        extra_files=[
-            "torch/_inductor/codegen/cuda/device_op_overrides.py",
-            "torch/_inductor/codegen/cpp_wrapper_cpu.py",
-            "torch/_inductor/codegen/cpp_wrapper_gpu.py",
-            "torch/_inductor/codegen/wrapper.py",
-        ],
-        out_of_place_only=args.out_of_place_only,
-        hip_clang_launch=is_hip_clang(),
-        clean_ctx=clean_ctx,
-    )
-    print("DEBUG: hipify completed successfully")
-except Exception as e:
-    print(f"Error: hipify failed: {e}")
-    sys.exit(1)
 
-# Debug: Log third_party directories after hipification
-third_party_path = os.path.join(out_dir, "third_party")
-if os.path.exists(third_party_path):
-    third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
-    print(f"DEBUG: Third-party directories after hipify: {third_party_dirs}")
-else:
-    print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
+hipify_python.hipify(
+    project_directory=proj_dir,
+    output_directory=out_dir,
+    includes=includes,
+    ignores=ignores,
+    extra_files=[
+        "torch/_inductor/codegen/cuda/device_op_overrides.py",
+        "torch/_inductor/codegen/cpp_wrapper_cpu.py",
+        "torch/_inductor/codegen/cpp_wrapper_gpu.py",
+        "torch/_inductor/codegen/wrapper.py",
+    ],
+    out_of_place_only=args.out_of_place_only,
+    hip_clang_launch=is_hip_clang(),
+)
