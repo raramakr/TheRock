@@ -177,10 +177,9 @@ def matched_files_iter(
             if "build" in dirs:
                 dirs.remove("build")
                 print("DEBUG: Removed build from directory traversal")  # Debug: Log build removal
+            # Modified: Keep all third_party subdirectories
             if "third_party" in dirs:
-                dirs.remove("third_party")
-                dirs.append("third_party/nvfuser")
-                print("DEBUG: Removed third_party, added third_party/nvfuser")  # Debug: Log third_party modification
+                print("DEBUG: Traversing all third_party subdirectories: {dirs}")
         for filename in filenames:
             filepath = _to_unix_path(os.path.join(abs_dirpath, filename))
             rel_filepath = _to_unix_path(os.path.join(rel_dirpath, filename))
@@ -1063,4 +1062,3 @@ def hipify(
     else:
         print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
     return HIPIFY_FINAL_RESULT
-

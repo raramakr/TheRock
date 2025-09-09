@@ -10,8 +10,6 @@ sys.path.insert(0, str(hipify_parent_dir))
 from hipify.hipify_python import hipify, GeneratedFileCleaner
 
 # NOTE: `tools/amd_build/build_amd.py` could be a symlink.
-# The behavior of `symlink / '..'` is different from `symlink.parent`.
-# Use `pardir` three times rather than using `path.parents[2]`.
 REPO_ROOT = (
     Path(__file__).absolute() / os.path.pardir / os.path.pardir / os.path.pardir
 ).resolve()
@@ -49,7 +47,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-# NOTE: `tools/amd_build/build_amd.py` could be a symlink.
 amd_build_dir = os.path.dirname(os.path.realpath(__file__))
 proj_dir = os.path.dirname(os.path.dirname(amd_build_dir))
 if args.project_directory:
@@ -78,8 +75,6 @@ includes = [
     "c10/cuda/test/CMakeLists.txt",
     "modules/*",
     "third_party/nvfuser/*",
-    # PyTorch paths
-    # Keep this synchronized with is_pytorch_file in hipify_python.py
     "aten/src/ATen/cuda/*",
     "aten/src/ATen/native/cuda/*",
     "aten/src/ATen/native/cudnn/*",
@@ -96,12 +91,12 @@ includes = [
     "aten/src/ATen/native/transformers/cuda/mem_eff_attention/pytorch_utils.h",
     "aten/src/THC/*",
     "aten/src/ATen/test/*",
-    # CMakeLists.txt isn't processed by default, but there are a few
-    # we do want to handle, so explicitly specify them
     "aten/src/THC/CMakeLists.txt",
     "torch/*",
     "tools/autograd/templates/python_variable_methods.cpp",
     "torch/csrc/stable/*",
+    "third_party/*",  # Added to include all third_party submodules
+    "examples/*",     # Added to include examples directories
 ]
 includes = [os.path.join(proj_dir, include) for include in includes]
 for new_dir in args.extra_include_dir:
@@ -114,10 +109,7 @@ ignores = [
     "caffe2/operators/depthwise_3x3_conv_op_cudnn.cu",
     "caffe2/operators/pool_op_cudnn.cu",
     "*/hip/*",
-    # These files are compatible with both cuda and hip
     "aten/src/ATen/core/*",
-    # Correct path to generate HIPConfig.h:
-    #   CUDAConfig.h.in -> (amd_build) HIPConfig.h.in -> (cmake) HIPConfig.h
     "aten/src/ATen/cuda/CUDAConfig.h",
     "third_party/nvfuser/csrc/codegen.cpp",
     "third_party/nvfuser/runtime/block_reduction.cu",
@@ -128,20 +120,14 @@ ignores = [
     "third_party/nvfuser/runtime/helpers.cu",
     "torch/csrc/jit/codegen/fuser/cuda/resource_strings.h",
     "torch/csrc/jit/tensorexpr/ir_printer.cpp",
-    # generated files we shouldn't frob
     "torch/lib/tmp_install/*",
     "torch/include/*",
 ]
 ignores = [os.path.join(proj_dir, ignore) for ignore in ignores]
 
-# Check if the compiler is hip-clang.
-#
-# This used to be a useful function but now we can safely always assume hip-clang.
-# Leaving the function here avoids bc-linter errors.
 def is_hip_clang() -> bool:
     return True
 
-# TODO Remove once the following submodules are updated
 hip_platform_files = [
     "third_party/fbgemm/fbgemm_gpu/CMakeLists.txt",
     "third_party/fbgemm/fbgemm_gpu/cmake/Hip.cmake",
@@ -182,7 +168,6 @@ else:
 
 for hip_platform_file in hip_platform_files:
     hip_platform_file = os.path.join(proj_dir, hip_platform_file)
-    do_write = False
     if os.path.exists(hip_platform_file):
         with open(hip_platform_file) as sources:
             lines = sources.readlines()
