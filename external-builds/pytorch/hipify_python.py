@@ -17,7 +17,7 @@
 # all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO the WARRANTIES of MERCHANTABILITY,
+# IMPLIED, INCLUDING BUT NOT LIMITED TO the WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
@@ -126,8 +126,10 @@ class GeneratedFileCleaner:
         if not os.path.isdir(dn) or not exist_ok:
             os.mkdir(dn)
             self.dirs_to_clean.append(os.path.abspath(dn))
+            print(f"DEBUG: GeneratedFileCleaner adding directory to clean: {dn}")  # Debug: Log directories added
 
     def __exit__(self, type, value, traceback):
+        print(f"DEBUG: GeneratedFileCleaner keep_intermediates={self.keep_intermediates}, dirs_to_clean={self.dirs_to_clean}")  # Debug: Log cleanup status
         if not self.keep_intermediates:
             for d in self.dirs_to_clean[::-1]:
                 print(f"DEBUG: GeneratedFileCleaner removing directory: {d}")  # Debug: Log directory deletions
@@ -164,6 +166,8 @@ def matched_files_iter(
     # end.
     for (abs_dirpath, dirs, filenames) in os.walk(root_path, topdown=True):
         rel_dirpath = os.path.relpath(abs_dirpath, root_path)
+        # Debug: Log all directories being traversed
+        print(f"DEBUG: Traversing directory: {abs_dirpath}, subdirs={dirs}")
         if rel_dirpath == "third_party":  # Debug: Log third_party traversal
             print(f"DEBUG: Traversing third_party directory: {abs_dirpath}")
             print(f"DEBUG: Subdirectories in third_party: {dirs}")
@@ -171,12 +175,14 @@ def matched_files_iter(
             # Blah blah blah O(n) blah blah
             if ".git" in dirs:
                 dirs.remove(".git")
+                print("DEBUG: Removed .git from directory traversal")  # Debug: Log .git removal
             if "build" in dirs:
                 dirs.remove("build")
+                print("DEBUG: Removed build from directory traversal")  # Debug: Log build removal
             if "third_party" in dirs:
                 dirs.remove("third_party")
                 dirs.append("third_party/nvfuser")
-                print("DEBUG: Removed third_party, added third_party/nvfuser")  # Debug: Log third_party removal
+                print("DEBUG: Removed third_party, added third_party/nvfuser")  # Debug: Log third_party modification
         for filename in filenames:
             filepath = _to_unix_path(os.path.join(abs_dirpath, filename))
             rel_filepath = _to_unix_path(os.path.join(rel_dirpath, filename))
@@ -527,10 +533,6 @@ def get_hip_file_path(rel_filepath, is_pytorch_extension=False):
     dirpath = dirpath.replace('cuda', 'hip')
     dirpath = dirpath.replace('CUDA', 'HIP')
     dirpath = dirpath.replace('THC', 'THH')
-    
-    root = root.replace('cuda', 'hip')
-    root = root.replace('CUDA', 'HIP')
-    
     # Special case to handle caffe2/core/THCCachingAllocator
     if dirpath != "caffe2/core":
         root = root.replace('THC', 'THH')
@@ -723,8 +725,8 @@ RE_CU_SUFFIX = re.compile(r'\.cu\b') # be careful not to pick up .cuh
 Returns a HipifyResult object with the following details:
     "hipified_path" : absolute path of hipified source file
     "status" : "ok" if hipified file was written out
-                      "skipped" if an identical hipified file already existed or hipified file couldn't be written out
-                      "ignored" if the source file was a hipified file itself or not meant to be hipified
+              "skipped" if an identical hipified file already existed or hipified file couldn't be written out
+              "ignored" if the source file was a hipified file itself or not meant to be hipified
     "current_state" : CurrentState.INITIALIZED if source file is first ready to be hipified
                       CurrentState.DONE if source file is done with hipification process
 """
@@ -1051,6 +1053,75 @@ def hipify(
     # Show detailed summary
     if show_detailed:
         compute_stats(stats)
-    # Debug: Log hipify completion
+    # Debug: Log hipify completion and directory status
     print(f"DEBUG: Hipify completed, final result: {HIPIFY_FINAL_RESULT}")
+    # Debug: Log third_party directories in output_directory
+    third_party_path = os.path.join(output_directory, "third_party")
+    if os.path.exists(third_party_path):
+        third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
+        print(f"DEBUG: Third-party directories after hipify: {third_party_dirs}")
+    else:
+        print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
     return HIPIFY_FINAL_RESULT
+
+#!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+from torch.utils.hipify import hipify_python
+
+def main():
+    print("DEBUG: Starting build_amd.py")
+    project_directory = "B:/src/torch"
+    output_directory = "B:/src/torch_amd"
+    
+    # Define includes list (customizable for debugging)
+    includes = [
+        "aten/src/ATen/cuda/*",
+        "c10/cuda/*",
+        "torch/*",
+        "third_party/nvfuser/*",
+        "third_party/fbgemm/*",
+        "third_party/gloo/*",
+        "third_party/kineto/*",
+        # Uncomment to include all third_party directories
+        # "third_party/*",
+    ]
+    print(f"DEBUG: build_amd.py includes={includes}")
+    
+    # Debug: Log third_party directories before hipification
+    third_party_path = os.path.join(project_directory, "third_party")
+    if os.path.exists(third_party_path):
+        third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
+        print(f"DEBUG: Third-party directories before hipify: {third_party_dirs}")
+    else:
+        print(f"DEBUG: Third-party directory {third_party_path} does not exist before hipify")
+
+    # Run hipify with explicit keep_intermediates
+    try:
+        clean_ctx = hipify_python.GeneratedFileCleaner(keep_intermediates=True)
+        print(f"DEBUG: Calling hipify with keep_intermediates={clean_ctx.keep_intermediates}")
+        hipify_python.hipify(
+            project_directory=project_directory,
+            output_directory=output_directory,
+            includes=includes,
+            show_detailed=True,
+            hip_clang_launch=False,
+            is_pytorch_extension=False,
+            clean_ctx=clean_ctx,
+        )
+        print("DEBUG: build_amd.py completed successfully")
+    except Exception as e:
+        print(f"Error: build_amd.py failed: {e}")
+        sys.exit(1)
+    
+    # Debug: Log third_party directories after hipification
+    third_party_path = os.path.join(output_directory, "third_party")
+    if os.path.exists(third_party_path):
+        third_party_dirs = [d for d in os.listdir(third_party_path) if os.path.isdir(os.path.join(third_party_path, d))]
+        print(f"DEBUG: Third-party directories after hipify: {third_party_dirs}")
+    else:
+        print(f"DEBUG: Third-party directory {third_party_path} does not exist after hipify")
+
+if __name__ == "__main__":
+    main()
