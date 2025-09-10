@@ -162,17 +162,11 @@ def matched_files_iter(
 
     exact_matches = set(includes)
 
-    # This is a very rough heuristic; really, we want to avoid scanning
-    # any file which is not checked into source control, but this script
-    # needs to work even if you're in a Git or Hg checkout, so easier to
-    # just block the biggest time sinks that won't matter in the
-    # end.
     for (abs_dirpath, dirs, filenames) in os.walk(root_path, topdown=True):
         rel_dirpath = os.path.relpath(abs_dirpath, root_path)
         print(f"[DEBUG][hipify_python] Entering directory: {rel_dirpath}")
-        rel_dirpath = os.path.relpath(abs_dirpath, root_path)
+
         if rel_dirpath == '.':
-            # Blah blah blah O(n) blah blah
             if ".git" in dirs:
                 dirs.remove(".git")
             if "build" in dirs:
@@ -180,14 +174,13 @@ def matched_files_iter(
             if "third_party" in dirs:
                 dirs.remove("third_party")
                 dirs.append("third_party/nvfuser")
+
+        matched_any = False
         for filename in filenames:
             filepath = _to_unix_path(os.path.join(abs_dirpath, filename))
             rel_filepath = _to_unix_path(os.path.join(rel_dirpath, filename))
             print(f"[DEBUG][hipify_python] Checking file: {rel_filepath}")
-            filepath = _to_unix_path(os.path.join(abs_dirpath, filename))
-            rel_filepath = _to_unix_path(os.path.join(rel_dirpath, filename))
-            # We respect extensions, UNLESS you wrote the entire
-            # filename verbatim, in which case we always accept it
+
             if (
                 _fnmatch(filepath, includes)
                 and (not _fnmatch(filepath, ignores))
@@ -198,7 +191,12 @@ def matched_files_iter(
                         continue
                     if out_of_place_only and not is_out_of_place(rel_filepath):
                         continue
+                matched_any = True
                 yield filepath
+
+        # If no file in this directory matched, log it
+        if filenames and not matched_any:
+            print(f"[HIPIFY-DEBUG] Skipped all files in directory: {rel_dirpath} ({len(filenames)} files)")
 
 
 def preprocess_file_and_save_result(
