@@ -334,6 +334,16 @@ def commit_hipify(args: argparse.Namespace):
             continue
         print(f"HIPIFY made changes to {module_path}: Committing")
         exec(["git", "add", "-A"], cwd=module_path)
+        print(f"[DEBUG][commit_hipify] About to stage changes in {module_path}")
+        try:
+            status_output = subprocess.check_output(
+                ["git", "status", "--short"],
+                cwd=str(module_path),
+                stderr=subprocess.DEVNULL,
+            ).decode()
+            print(f"[DEBUG][commit_hipify] git status in {module_path}:\n{status_output}")
+        except Exception as e:
+            print(f"[DEBUG][commit_hipify] Failed to get git status in {module_path}: {e}")
         exec(
             ["git", "commit", "-m", HIPIFY_COMMIT_MESSAGE, "--no-gpg-sign"],
             cwd=module_path,
