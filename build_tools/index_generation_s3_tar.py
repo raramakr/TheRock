@@ -1,3 +1,5 @@
+import os
+import argparse
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
@@ -107,15 +109,18 @@ def generate_index_s3(bucket_name, region_name='us-east-2', prefix=''):
     
     print(f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}")
 
-    # Upload index.html back to S3
     try:
-        s3.upload_file(local_path, bucket_name, 'index.html', ExtraArgs={'ContentType': 'text/html', 'ACL': 'public-read'})
-        print(f"index.html successfully uploaded to bucket '{bucket_name}' with public-read ACL.")
+        s3.upload_file(local_path, bucket_name, 'index.html', ExtraArgs={'ContentType': 'text/html'})
+        print(f"index.html successfully uploaded to bucket '{bucket_name}'.")
     except ClientError as e:
         print(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
 
 if __name__ == "__main__":
-    bucket_name = 'therock-nightly-tarball'
+    parser = argparse.ArgumentParser(description='Generate index.html for S3 bucket tar.gz files.')
+    parser.add_argument('--bucket', required=True, help='S3 bucket name')
+    args = parser.parse_args()
+
     region_name = 'us-east-2'
     prefix = ''
-    generate_index_s3(bucket_name, region_name, prefix)
+
+    generate_index_s3(args.bucket, region_name, prefix)
