@@ -254,7 +254,7 @@ jobs:
 
       # TODO(marbre): guard against race conditions where multiple workflows update the index at the same time?
       #    Moving the index computation server-side could help
-      - name: (Re-)Generate Python package release index
+      - name: (Re-)Generate release index pages
         if: ${{ github.repository_owner == 'ROCm' }}
         run: |
           pip install boto3 packaging
