@@ -1,43 +1,73 @@
+#!/usr/bin/env python
+"""
+Script to generate an index.html listing .tar.gz files in an S3 bucket, performing the following:
+ * Lists .tar.gz files in the specified S3 bucket.
+ * Generates HTML page with sorting and filtering options
+ * Saves the HTML locally as index.html
+ * Uploads index.html back to the same S3 bucket
+
+Requirements:
+ * `boto3` Python package must be installed, e.g.: pip install boto3
+
+Examples:
+Generate index.html for all tarballs in a bucket:
+./index_generation_s3_tar.py --bucket <bucketname>
+
+
+Generate index.html for files under a prefix and in a specific region:
+./index_generation_s3_tar.py --bucket <bucketname> --prefix nightly/ --region us-east-1
+
+"""
+
 import os
 import argparse
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
-def generate_index_s3(bucket_name, region_name='us-east-2', prefix=''):
-    s3 = boto3.client('s3', region_name=region_name)
+
+def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
+    s3 = boto3.client("s3", region_name=region_name)
 
     try:
         response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
     except NoCredentialsError:
-        print("AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
+        print(
+            "AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
+        )
         return
     except ClientError as e:
         print(f"Error accessing bucket {bucket_name}: {e}")
         return
 
-    if 'Contents' not in response:
+    if "dev" in bucket_name.lower():
+        page_title = "ROCm SDK dev tarballs"
+    elif "nightly" in bucket_name.lower():
+        page_title = "ROCm SDK nightly tarballs"
+    else:
+        page_title = "ROCm SDK tarballs"
+
+    if "Contents" not in response:
         print(f"No objects found in bucket {bucket_name} with prefix '{prefix}'.")
         return
 
     files = [
-        (obj['Key'], obj['LastModified'].timestamp())
-        for obj in response['Contents']
-        if obj['Key'].endswith('.tar.gz')
+        (obj["Key"], obj["LastModified"].timestamp())
+        for obj in response["Contents"]
+        if obj["Key"].endswith(".tar.gz")
     ]
 
     if not files:
         print(f"No .tar.gz files found in bucket {bucket_name} with prefix '{prefix}'.")
         return
 
-    files_js_array = str([
-        {"name": f[0], "mtime": f[1]}
-        for f in files
-    ]).replace("'", "\"")
+    files_js_array = str([{"name": f[0], "mtime": f[1]} for f in files]).replace(
+        "'", '"'
+    )
 
     html_content = f"""
     <html>
     <head>
-        <title>List of TAR.GZ Files</title>
+        <title>{page_title}</title>
         <style>
             body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }}
             h1 {{ color: #0056b3; }}
@@ -81,7 +111,7 @@ def generate_index_s3(bucket_name, region_name='us-east-2', prefix=''):
         </script>
     </head>
     <body>
-        <h1>List of TAR.GZ Files</h1>
+        <h1>{page_title}</h1>
         <div>
             <label for="sortOrder">Sort by: </label>
             <select id="sortOrder">
@@ -106,21 +136,31 @@ def generate_index_s3(bucket_name, region_name='us-east-2', prefix=''):
     local_path = "index.html"
     with open(local_path, "w") as f:
         f.write(html_content)
-    
-    print(f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}")
+
+    print(
+        f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}"
+    )
 
     try:
-        s3.upload_file(local_path, bucket_name, 'index.html', ExtraArgs={'ContentType': 'text/html'})
+        s3.upload_file(
+            local_path,
+            bucket_name,
+            "index.html",
+            ExtraArgs={"ContentType": "text/html"},
+        )
         print(f"index.html successfully uploaded to bucket '{bucket_name}'.")
     except ClientError as e:
         print(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate index.html for S3 bucket tar.gz files.')
-    parser.add_argument('--bucket', required=True, help='S3 bucket name')
+    parser = argparse.ArgumentParser(
+        description="Generate index.html for S3 bucket tar.gz files."
+    )
+    parser.add_argument("--bucket", required=True, help="S3 bucket name")
     args = parser.parse_args()
 
-    region_name = 'us-east-2'
-    prefix = ''
+    region_name = "us-east-2"
+    prefix = ""
 
     generate_index_s3(args.bucket, region_name, prefix)
