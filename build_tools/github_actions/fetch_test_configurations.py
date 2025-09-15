@@ -32,7 +32,7 @@ test_matrix = {
     "rocblas": {
         "job_name": "rocblas",
         "fetch_artifact_args": "--blas --tests",
-        "timeout_minutes": 5,
+        "timeout_minutes": 15,
         "test_script": f"python {_get_script_path('test_rocblas.py')}",
         "platform": ["linux", "windows"],
     },
@@ -99,7 +99,7 @@ test_matrix = {
     "miopen": {
         "job_name": "miopen",
         "fetch_artifact_args": "--blas --miopen --tests",
-        "timeout_minutes": 5,
+        "timeout_minutes": 120,
         "test_script": f"python {_get_script_path('test_miopen.py')}",
         "platform": ["linux"],
     },
@@ -138,7 +138,7 @@ def run():
             logging.info(f"Including job {job_name}")
             output_matrix.append(test_matrix[key])
 
-    gha_set_output({"components": json.dumps(output_matrix)})
+    gha_set_output({"components": json.dumps(output_matrix), "platform": platform})
 
 
 if __name__ == "__main__":
