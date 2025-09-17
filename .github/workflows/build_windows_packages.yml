@@ -137,12 +137,12 @@ jobs:
           if [[ -f "$SRC" ]]; then
             echo "Copying $SRC -> $DST"
             cp -f "$SRC" "$DST"
-      python - "$SRC" "$DST" <<'PY'
-      import hashlib, sys, pathlib
+            # Show hashes of both files (no heredoc)
+            python -c 'import hashlib,sys; 
+      from pathlib import Path
       for p in sys.argv[1:]:
-          with open(p,'rb') as f:
-              print(str(pathlib.Path(p)), hashlib.sha256(f.read()).hexdigest())
-      PY
+          print(p, hashlib.sha256(Path(p).read_bytes()).hexdigest())' \
+              "$SRC" "$DST"
           else
             echo "::warning::Override not found at $SRC (skipping)"
           fi
