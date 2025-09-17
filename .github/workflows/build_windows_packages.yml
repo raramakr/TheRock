@@ -129,6 +129,7 @@ jobs:
           python ./build_tools/fetch_sources.py --jobs 12
 
       - name: Override ExtOpCreateLibrary.py in hipBLASLt (post-fetch)
+        shell: bash
         run: |
           set -euxo pipefail
           SRC="build_tools/overrides/hipblaslt/ExtOpCreateLibrary.py"
@@ -136,13 +137,12 @@ jobs:
           if [[ -f "$SRC" ]]; then
             echo "Copying $SRC -> $DST"
             cp -f "$SRC" "$DST"
-            # sanity: show hashes of both files
-            python - "$SRC" "$DST" <<'PY'
-            import hashlib, sys, pathlib
-            for p in sys.argv[1:]:
-                with open(p,'rb') as f:
-                    print(str(pathlib.Path(p)), hashlib.sha256(f.read()).hexdigest())
-            PY
+      python - "$SRC" "$DST" <<'PY'
+      import hashlib, sys, pathlib
+      for p in sys.argv[1:]:
+          with open(p,'rb') as f:
+              print(str(pathlib.Path(p)), hashlib.sha256(f.read()).hexdigest())
+      PY
           else
             echo "::warning::Override not found at $SRC (skipping)"
           fi
