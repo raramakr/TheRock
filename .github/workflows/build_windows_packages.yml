@@ -130,36 +130,48 @@ jobs:
 
       - name: Override ExtOpCreateLibrary.py in hipBLASLt (post-fetch)
         shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
           set -euxo pipefail
-          SRC="build_tools/overrides/hipblaslt/ExtOpCreateLibrary.py"
-          DST="rocm-libraries/projects/hipblaslt/tensilelite/ExtOpCreateLibrary.py"
+          echo "PWD=$(pwd)"
+          echo "WORKSPACE=${GITHUB_WORKSPACE}"
 
-          if [[ -f "$SRC" ]]; then
-            echo "Copying $SRC -> $DST"
-            cp -f "$SRC" "$DST"
+          SRC="$GITHUB_WORKSPACE/ExtOpCreateLibrary.py"
+          DST="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite/ExtOpCreateLibrary.py"
 
-            # Verify the copy (byte-for-byte)
-            if command -v cmp >/dev/null 2>&1; then
-              cmp -s "$SRC" "$DST"
-            else
-              # Fallback: compare sizes (cheap sanity check)
-              [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
-            fi
-
-            # Print SHA256 using the best available tool
-            if command -v sha256sum >/dev/null 2>&1; then
-              sha256sum "$SRC" "$DST"
-            elif command -v shasum >/dev/null 2>&1; then
-              shasum -a 256 "$SRC" "$DST"
-            else
-              # Windows fallback via PowerShell
-              powershell.exe -NoProfile -Command \
-                "Get-FileHash -Algorithm SHA256 @('$SRC','$DST') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
-            fi
-          else
-            echo '::warning::Override not found at '"$SRC"' (skipping)'
+          if [[ ! -f "$SRC" ]]; then
+            echo "::error::Override source not found at: $SRC"
+            exit 1
           fi
+
+          if [[ ! -d "$(dirname "$DST")" ]]; then
+            echo "::error::Destination dir not found: $(dirname "$DST")"
+            echo "Did 'Fetch sources' run and create hipBLASLt? Listing:"
+            ls -la "$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt" || true
+            exit 1
+          fi
+
+          echo "Copying $SRC -> $DST"
+          cp -f "$SRC" "$DST"
+
+          # Verify the copy (byte-for-byte if cmp exists, else size check)
+          if command -v cmp >/dev/null 2>&1; then
+            cmp -s "$SRC" "$DST"
+          else
+            [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
+          fi
+
+          # Print SHA256 using the best available tool
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$SRC" "$DST"
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$SRC" "$DST"
+          else
+            # Windows PowerShell fallback
+            powershell.exe -NoProfile -Command \
+              "Get-FileHash -Algorithm SHA256 @('$SRC','$DST') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
+          fi
+
 
       - name: Configure Projects
         env:
