@@ -134,17 +134,31 @@ jobs:
           set -euxo pipefail
           SRC="build_tools/overrides/hipblaslt/ExtOpCreateLibrary.py"
           DST="rocm-libraries/projects/hipblaslt/tensilelite/ExtOpCreateLibrary.py"
+
           if [[ -f "$SRC" ]]; then
             echo "Copying $SRC -> $DST"
             cp -f "$SRC" "$DST"
-            # Show hashes of both files (no heredoc)
-            python -c 'import hashlib,sys; 
-      from pathlib import Path
-      for p in sys.argv[1:]:
-          print(p, hashlib.sha256(Path(p).read_bytes()).hexdigest())' \
-              "$SRC" "$DST"
+
+            # Verify the copy (byte-for-byte)
+            if command -v cmp >/dev/null 2>&1; then
+              cmp -s "$SRC" "$DST"
+            else
+              # Fallback: compare sizes (cheap sanity check)
+              [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
+            fi
+
+            # Print SHA256 using the best available tool
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$SRC" "$DST"
+            elif command -v shasum >/dev/null 2>&1; then
+              shasum -a 256 "$SRC" "$DST"
+            else
+              # Windows fallback via PowerShell
+              powershell.exe -NoProfile -Command \
+                "Get-FileHash -Algorithm SHA256 @('$SRC','$DST') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
+            fi
           else
-            echo "::warning::Override not found at $SRC (skipping)"
+            echo '::warning::Override not found at '"$SRC"' (skipping)'
           fi
 
       - name: Configure Projects
