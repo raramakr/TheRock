@@ -19,21 +19,14 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNE-
 # CTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ################################################################################
-"""
-ExtOpCreateLibrary.py
 
-Builds the hipBLASLt ExtOp library by scanning per-arch YAML/JSON metadata,
-merging into an existing library (if present), and writing the result safely.
-
-Key improvements (important for Windows CI robustness):
-- Writes are done via a temporary file in the same directory, then an atomic
-  replace of the destination file (no partial/half-written output is ever visible).
-- On Windows, the final replacement uses MoveFileExW(REPLACE_EXISTING|WRITE_THROUGH)
-  to more reliably overwrite a destination that other processes may be observing.
-- Reads of an existing library and the final atomic replace both tolerate transient
-  sharing violations by retrying with exponential backoff.
-
-"""
+# Key improvements (important for Windows CI robustness):
+# - Writes are done via a temporary file in the same directory, then an atomic
+#  replace of the destination file (no partial/half-written output is ever visible).
+# - On Windows, the final replacement uses MoveFileExW(REPLACE_EXISTING|WRITE_THROUGH)
+#  to more reliably overwrite a destination that other processes may be observing.
+# - Reads of an existing library and the final atomic replace both tolerate transient
+#  sharing violations by retrying with exponential backoff.
 
 from argparse import ArgumentParser
 from collections import defaultdict
@@ -54,11 +47,11 @@ _WRITERS = {"dat": msgpack, "yaml": yaml, "json": json}
 
 
 def _dump_to(path, fmt, data, mode):
-    """
-    Serialize `data` to `path` using the writer for `fmt`, opening the file with `mode`
-    ('wb' for binary .dat, 'w' for text). We best-effort flush+fsync so the temp file
-    is on disk before we try to replace the destination.
-    """
+
+    # Serialize `data` to `path` using the writer for `fmt`, opening the file with `mode`
+    # ('wb' for binary .dat, 'w' for text). Effort flush+fsync so the temp file
+    # is on disk before trying to replace the destination.
+
     with open(path, mode) as f:
         _WRITERS[fmt].dump(data, f)
         # Ensure the temp file's contents are durable before the rename/replace.
@@ -72,14 +65,14 @@ def _dump_to(path, fmt, data, mode):
 
 
 def _replace_atomic(src, dst):
-    """
-    Atomically replace `dst` with `src` (which must be in the same directory).
 
-    - On Windows, use MoveFileExW with REPLACE_EXISTING and WRITE_THROUGH to
-      replace in-place and request the system to write through any caches.
-    - On POSIX, os.rename() within the same directory is atomic and overwrites.
-      (We ensure the temp file is created next to the destination.)
-    """
+    # Atomically replace `dst` with `src` (which must be in the same directory).
+
+    # - On Windows, use MoveFileExW with REPLACE_EXISTING and WRITE_THROUGH to
+    #  replace in-place and request the system to write through any caches.
+    # - On POSIX, os.rename() within the same directory is atomic and overwrites.
+    #  (Ensure the temp file is created next to the destination.)
+
     if os.name == "nt" and ctypes:
         MOVEFILE_REPLACE_EXISTING = 0x1
         MOVEFILE_WRITE_THROUGH = 0x8
@@ -89,7 +82,7 @@ def _replace_atomic(src, dst):
             MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
         )
         if rc == 0:
-            # Convert the last Win32 error into an OSError so callers can
+            # Convert the last Win32 error into an OSError so the callers can
             # implement retry/backoff for sharing violations.
             raise OSError(ctypes.get_last_error(), "MoveFileExW failed")
     else:
@@ -99,20 +92,20 @@ def _replace_atomic(src, dst):
 
 
 def _retry_read(path, fmt, is_bin, tries=30, base=0.02):
-    """
-    Read+deserialize a file with retries on Windows sharing violations.
 
-    Parameters:
-      path   : file to read
-      fmt    : 'dat'|'yaml'|'json'
-      is_bin : True for msgpack .dat, False for text formats
-      tries  : number of read attempts before giving up
-      base   : base delay (seconds) for exponential backoff
+    # Read+deserialize a file with retries on Windows sharing violations.
 
-    On Windows, if another process temporarily holds the file open exclusively,
-    we may see WinError 5/32/33 or EACCES/EBUSY. We retry with exponential
-    backoff to allow the other process to release.
-    """
+    # Parameters:
+    #  path   : file to read
+    #  fmt    : 'dat'|'yaml'|'json'
+    #  is_bin : True for msgpack .dat, False for text formats
+    #  tries  : number of read attempts before giving up
+    #  base   : base delay (seconds) for exponential backoff
+
+    # On Windows, if another process temporarily holds the file open exclusively,
+    # May seen WinError 5/32/33 or EACCES/EBUSY. Retrying with exponential
+    # backoff to allow the other process to release.
+
     mode = "rb" if is_bin else "r"
     for i in range(tries):
         try:
@@ -122,7 +115,9 @@ def _retry_read(path, fmt, is_bin, tries=30, base=0.02):
             # Only retry the Windows class of "file in use"/sharing violations.
             if os.name != "nt":
                 raise
-            if getattr(e, "winerror", 0) in (5, 32, 33) or getattr(e, "errno", None) in (
+            if getattr(e, "winerror", 0) in (5, 32, 33) or getattr(
+                e, "errno", None
+            ) in (
                 errno.EACCES,
                 errno.EBUSY,
             ):
@@ -134,18 +129,18 @@ def _retry_read(path, fmt, is_bin, tries=30, base=0.02):
 
 
 def _atomic_dump(path, fmt, data, is_bin):
-    """
-    Atomically write the serialized `data` to `path`.
 
-    Steps:
-      1) Create a unique temp file next to the destination (same directory).
-      2) Serialize + fsync the temp file.
-      3) Atomically replace the destination with the temp file.
-         - On Windows, retry a bounded number of times to ride out transient
-           sharing violations when another process temporarily has the file open.
+    # Atomically write the serialized `data` to `path`.
 
-    If replacement never succeeds (e.g., a persistent lock), raise PermissionError.
-    """
+    # Steps:
+    #  1) Create a unique temp file next to the destination (same directory).
+    #  2) Serialize + fsync the temp file.
+    #  3) Atomically replace the destination with the temp file.
+    #     - On Windows, retry a bounded number of times to ride out transient
+    #       sharing violations when another process temporarily has the file open.
+
+    # If replacement never succeeds (e.g., a persistent lock), raise PermissionError.
+
     # Ensure the directory exists; keep temp file on the same filesystem/dir
     # so the final rename/replace is guaranteed atomic.
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
@@ -165,7 +160,9 @@ def _atomic_dump(path, fmt, data, is_bin):
             if os.name != "nt":
                 # On non-Windows, treat errors as fatal (no known transient share-violations).
                 raise
-            if getattr(e, "winerror", 0) in (5, 32, 33) or getattr(e, "errno", None) in (
+            if getattr(e, "winerror", 0) in (5, 32, 33) or getattr(
+                e, "errno", None
+            ) in (
                 errno.EACCES,
                 errno.EBUSY,
             ):
@@ -181,20 +178,8 @@ if __name__ == "__main__":
     ap = ArgumentParser(description="Parse op YAMLs and create library for hipBLASLt")
     ap.add_argument("--src", type=str, required=True, help="Folder that contains op meta files")
     ap.add_argument("--co", type=str, required=True, help="Path to code object file")
-    ap.add_argument(
-        "--input-format",
-        type=str,
-        default="yaml",
-        choices=("yaml", "json"),
-        help="Input kernel meta format",
-    )
-    ap.add_argument(
-        "--format",
-        type=str,
-        default="dat",
-        choices=("yaml", "json", "dat"),
-        help="Library format, default is dat",
-    )
+    ap.add_argument("--input-format", type=str, default="yaml", choices=("yaml", "json"), help="Input kernel meta format",)
+    ap.add_argument("--format", type=str, default="dat", choices=("yaml", "json", "dat"), help="Library format, default is dat",)
     ap.add_argument("--output", type=str, default="./", help="Output folder")
     ap.add_argument("--arch", type=str, required=True, help="GPU Architecture, e.g. gfx90a")
     args = ap.parse_args()
@@ -214,7 +199,11 @@ if __name__ == "__main__":
     # Collect per-arch meta files (yaml/json) for the requested arch suffix.
     for p in glob.glob(f"{src_folder}/*{opt_arch}.{input_format}"):
         with open(p) as f:
-            meta_dict = yaml.load(f, yaml.SafeLoader) if input_format == "yaml" else json.load(f)
+            meta_dict = (
+                yaml.load(f, yaml.SafeLoader)
+                if input_format == "yaml"
+                else json.load(f)
+            )
 
         # Store just the basename of the code object—consumers know where to find it.
         meta_dict["co_path"] = os.path.basename(co_path)
