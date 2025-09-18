@@ -16,6 +16,8 @@ on:
       extra_cmake_options:
         type: string
         default: "-DBUILD_TESTING=ON"
+      sanity_check_only:
+        type: boolean
 
 permissions:
   contents: read
@@ -54,3 +56,4 @@ jobs:
       amdgpu_families: ${{ inputs.amdgpu_families }}
       test_runs_on: ${{ inputs.test_runs_on }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
+      sanity_check_only: ${{ inputs.sanity_check_only == true }}

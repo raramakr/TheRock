@@ -15,9 +15,10 @@ amdgpu_family_info_matrix_presubmit = {
     },
     "gfx110x": {
         "linux": {
-            "test-runs-on": "",
+            "test-runs-on": "linux-gfx110X-gpu-rocm",
             "family": "gfx110X-dgpu",
             "bypass_tests_for_releases": True,
+            "sanity_check_only": True
         },
         "windows": {
             "test-runs-on": "",
@@ -48,9 +49,10 @@ amdgpu_family_info_matrix_postsubmit = {
     },
     "gfx120x": {
         "linux": {
-            "test-runs-on": "",  # removed due to machine issues, label is "linux-rx9070-gpu-rocm"
+            "test-runs-on": "linux-rx9070-gpu-rocm",
             "family": "gfx120X-all",
             "bypass_tests_for_releases": True,
+            "sanity_check_only": True
         },
         "windows": {
             "test-runs-on": "",
@@ -88,9 +90,10 @@ amdgpu_family_info_matrix_nightly = {
     },
     "gfx103x": {
         "linux": {
-            "test-runs-on": "",
+            "test-runs-on": "linux-rx6950-gpu-rocm",
             "family": "gfx103X-dgpu",
             "expect_failure": True,
+            "sanity_check_only": True
         },
         "windows": {
             "test-runs-on": "",

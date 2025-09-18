@@ -10,6 +10,9 @@ on:
         type: string
       test_runs_on:
         type: string
+      sanity_check_only:
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       artifact_run_id:
@@ -19,6 +22,9 @@ on:
         type: string
       test_runs_on:
         type: string
+      sanity_check_only:
+        type: boolean
+        default: false
   push:
     branches:
       - ADHOCBUILD
@@ -83,8 +89,8 @@ jobs:
         --group-add 992
         --env-file /etc/podinfo/gha-gpu-isolation-settings
     needs: [test_sanity_check, configure_test_matrix]
-    # skip tests if no test matrix to run
-    if: ${{ needs.configure_test_matrix.outputs.components != '[]' }}
+    # skip tests if no test matrix to run and sanity check only requested
+    if: ${{ needs.configure_test_matrix.outputs.components != '[]' && !inputs.sanity_check_only }}
     strategy:
       fail-fast: false
       matrix:
