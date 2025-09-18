@@ -40,9 +40,17 @@ def _verbosity():
 
 _V = _verbosity()
 
+import sys
+try:
+    # Python 3.7+: force immediate writes even when not attached to a TTY
+    sys.stdout.reconfigure(line_buffering=True, write_through=True)
+except Exception:
+    pass
+
 def _log(msg, level=1):
-    if _V >= level:
-        print(f"[hipBLASLt][ExtOpCreateLibrary] {msg}")
+    if _verbosity() >= level:
+        print(f"[hipBLASLt][ExtOpCreateLibrary] {msg}", flush=True)
+
 
 def _err_detail(e):
     winerr = getattr(e, "winerror", None)

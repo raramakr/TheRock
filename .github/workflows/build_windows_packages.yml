@@ -184,10 +184,18 @@ jobs:
           python3 build_tools/github_actions/build_configure.py
 
       - name: Build therock-dist
-        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-dist
+        env:
+          PYTHONUNBUFFERED: "1"           
+          HIPBLASLT_EXTOP_VERBOSE: "2"    
+          TEATIME_FORCE_INTERACTIVE: "1"  
+        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-dist -- -v
 
       - name: Build therock-archives
-        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-archives
+        env:
+          PYTHONUNBUFFERED: "1"           
+          HIPBLASLT_EXTOP_VERBOSE: "2"    
+          TEATIME_FORCE_INTERACTIVE: "1" 
+        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-archives -- -v
 
       - name: Report
         if: ${{ !cancelled() }}
