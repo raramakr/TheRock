@@ -44,6 +44,7 @@ jobs:
         --device /dev/dri
         --group-add 992
         --env-file /etc/podinfo/gha-gpu-isolation-settings
+        --user 1001:1001
     defaults:
       run:
         shell: bash
