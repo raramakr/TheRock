@@ -44,7 +44,7 @@ jobs:
         --device /dev/dri
         --group-add 992
         --env-file /etc/podinfo/gha-gpu-isolation-settings
-        --user 1001:1001
+        --user 0:0
     defaults:
       run:
         shell: bash
@@ -63,7 +63,7 @@ jobs:
           ls -lan /__w || true
           ls -lan "$GITHUB_WORKSPACE" || true
           stat -c "%n -> %U %G %a %u:%g" "$GITHUB_WORKSPACE" || true
-          
+
       - name: "Fetch 'build_tools' from repository"
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
