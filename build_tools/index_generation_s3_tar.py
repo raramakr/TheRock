@@ -23,21 +23,34 @@ import os
 import argparse
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
+import re
+
+
+def extract_gpu_details(files):
+    gpu_family_pattern = re.compile(r"gfx(?:\d+[A-Za-z]*|\w+)")
+    gpu_families = set()
+
+    for file_name, _ in files:
+        match = gpu_family_pattern.search(file_name)
+        if match:
+            gpu_families.add(match.group(0))
+
+    return list(gpu_families)
 
 
 def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
+    # Initialize S3 client
     s3 = boto3.client("s3", region_name=region_name)
 
     try:
+        # List objects in the S3 bucket
         response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
     except NoCredentialsError:
-        print(
+        raise Exception(
             "AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
         )
-        return
     except ClientError as e:
-        print(f"Error accessing bucket {bucket_name}: {e}")
-        return
+        raise Exception(f"Error accessing bucket {bucket_name}: {e}")
 
     if "dev" in bucket_name.lower():
         page_title = "ROCm SDK dev tarballs"
@@ -47,8 +60,9 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
         page_title = "ROCm SDK tarballs"
 
     if "Contents" not in response:
-        print(f"No objects found in bucket {bucket_name} with prefix '{prefix}'.")
-        return
+        raise Exception(
+            f"No objects found in bucket {bucket_name} with prefix '{prefix}'."
+        )
 
     files = [
         (obj["Key"], obj["LastModified"].timestamp())
@@ -57,13 +71,22 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     ]
 
     if not files:
-        print(f"No .tar.gz files found in bucket {bucket_name} with prefix '{prefix}'.")
-        return
+        raise Exception(
+            f"No .tar.gz files found in bucket {bucket_name} with prefix '{prefix}'."
+        )
 
+    # Extract GPU family names from files
+    gpu_families = extract_gpu_details(files)
+    gpu_families_options = "".join(
+        [f'<option value="{family}">{family}</option>' for family in gpu_families]
+    )
+
+    # Perpare array of file details for HTML rendering
     files_js_array = str([{"name": f[0], "mtime": f[1]} for f in files]).replace(
         "'", '"'
     )
 
+    # HTML content for displaying files
     html_content = f"""
     <html>
     <head>
@@ -121,11 +144,7 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
             <label for="filter">Filter by: </label>
             <select id="filter">
                 <option value="all">All</option>
-                <option value="gfx110X">gfx110X</option>
-                <option value="gfx1151">gfx1151</option>
-                <option value="gfx120X">gfx120X</option>
-                <option value="gfx94X">gfx94X</option>
-                <option value="gfx950">gfx950</option>
+                {gpu_families_options}
             </select>
         </div>
         <ul id="fileList"></ul>
@@ -142,6 +161,7 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     )
 
     try:
+        # Upload the index.html to S3 bucket
         s3.upload_file(
             local_path,
             bucket_name,
@@ -150,7 +170,7 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
         )
         print(f"index.html successfully uploaded to bucket '{bucket_name}'.")
     except ClientError as e:
-        print(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
+        raise Exception(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
 
 
 if __name__ == "__main__":
@@ -162,5 +182,4 @@ if __name__ == "__main__":
 
     region_name = "us-east-2"
     prefix = ""
-
-    generate_index_s3(args.bucket, region_name, prefix)
+    generate_index_s3(bucket_name=args.bucket, region_name=region_name, prefix=prefix)
