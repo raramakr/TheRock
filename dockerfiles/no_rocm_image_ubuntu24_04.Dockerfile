@@ -10,10 +10,6 @@ RUN groupadd -g 109 render && usermod -a -G render,video tester
 # New added for disable sudo password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# Make GitHub workspace path writable
-# This ensures tester can write to /__w even when mounted from host
-RUN mkdir -p /__w && chmod 777 /__w
-
 # Set as default user
 USER tester
 

@@ -37,7 +37,7 @@ jobs:
     name: "Sanity ROCM Test"
     runs-on: ${{ inputs.test_runs_on }}
     container:
-      image: ${{ inputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:ce1c0a68fa84e0f13234b0da53e6fcfdf8e23d53cdcf3f61b7b10d9a73b57212' || null }}
+      image: ${{ inputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:405945a40deaff9db90b9839c0f41d4cba4a383c1a7459b28627047bf6302a26' || null }}
       options: --ipc host
         --group-add video
         --device /dev/kfd
@@ -53,17 +53,11 @@ jobs:
       OUTPUT_ARTIFACTS_DIR: ${{ github.workspace }}/build
       THEROCK_BIN_DIR: ${{ github.workspace }}/build/bin
     steps:
-      - name: Debug user + workspace perms
-        run: |
-          echo "whoami: $(whoami)"
-          echo "id: $(id -u):$(id -g) $(id -un):$(id -gn)"
-          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          echo "ls -ld /__w /github/workspace $GITHUB_WORKSPACE || true"
-          ls -lan /__w || true
-          ls -lan "$GITHUB_WORKSPACE" || true
-          stat -c "%n -> %U %G %a %u:%g" "$GITHUB_WORKSPACE" || true
+      - name: Fix workspace ownership for CI machine
+        run: sudo chown -R $(id -u):$(id -g) "$GITHUB_WORKSPACE"
 
       - name: "Fetch 'build_tools' from repository"
+        if: ${{ runner.os == 'Windows' }}
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           sparse-checkout: build_tools

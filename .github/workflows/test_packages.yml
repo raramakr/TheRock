@@ -42,7 +42,11 @@ jobs:
       components: ${{ steps.configure.outputs.components }}
       platform: ${{ steps.configure.outputs.platform }}
     steps:
+      - name: Fix workspace ownership for CI machine
+        run: sudo chown -R $(id -u):$(id -g) "$GITHUB_WORKSPACE"
+
       - name: "Fetch 'build_tools' from repository"
+        if: ${{ runner.os == 'Windows' }}
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           sparse-checkout: build_tools
@@ -81,7 +85,7 @@ jobs:
     name: 'Test ${{ matrix.components.job_name }}'
     runs-on: ${{ inputs.test_runs_on }}
     container:
-      image: ${{ needs.configure_test_matrix.outputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:ce1c0a68fa84e0f13234b0da53e6fcfdf8e23d53cdcf3f61b7b10d9a73b57212' || null }}
+      image: ${{ needs.configure_test_matrix.outputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:4150afe4759d14822f0e3f8930e1124f26e11f68b5c7b91ec9a02b20b1ebbb98' || null }}
       options: --ipc host
         --group-add video
         --device /dev/kfd
