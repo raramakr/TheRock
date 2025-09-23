@@ -81,14 +81,13 @@ jobs:
     name: 'Test ${{ matrix.components.job_name }}'
     runs-on: ${{ inputs.test_runs_on }}
     container:
-      image: ${{ needs.configure_test_matrix.outputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:4150afe4759d14822f0e3f8930e1124f26e11f68b5c7b91ec9a02b20b1ebbb98' || null }}
+      image: ${{ needs.configure_test_matrix.outputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:ce1c0a68fa84e0f13234b0da53e6fcfdf8e23d53cdcf3f61b7b10d9a73b57212' || null }}
       options: --ipc host
         --group-add video
         --device /dev/kfd
         --device /dev/dri
         --group-add 992
         --env-file /etc/podinfo/gha-gpu-isolation-settings
-        --user 1001:1001
     needs: [test_sanity_check, configure_test_matrix]
     # skip tests if no test matrix to run and sanity check only requested
     if: ${{ needs.configure_test_matrix.outputs.components != '[]' && !inputs.sanity_check_only }}
