@@ -27,13 +27,6 @@ import glob
 import msgpack
 import yaml
 import json
-import time
-import errno
-import random
-try:
-    import ctypes  # Used only on Windows for MoveFileExW
-except Exception:
-    ctypes = None
 
 if __name__ == '__main__':
     ap = ArgumentParser(description='Parse op YAMLs and create library for hipBLASLt')
@@ -43,13 +36,16 @@ if __name__ == '__main__':
     ap.add_argument('--format', type=str, default='dat', choices=('yaml', 'json', 'dat'), help='Library format, default is dat')
     ap.add_argument('--output', type=str, default='./', help='Output folder')
     ap.add_argument('--arch', type=str, required=True, help='GPU Architecture, e.g. gfx90a')
+    ap.add_argument('--intermediate', action='store_true', help='Output intermediate per-arch file instead of merging')
     args = ap.parse_args()
+
     src_folder: str = args.src
     lib_format: str = args.format
     input_format: str = args.input_format
     co_path: str = args.co
     output: str = args.output
     opt_arch: str = args.arch
+    intermediate: bool = args.intermediate
 
     src_folder = os.path.expandvars(os.path.expanduser(src_folder))
 
@@ -70,90 +66,28 @@ if __name__ == '__main__':
         datatype = meta_dict['io_type']
         lib_meta[arch][op][datatype].append(meta_dict)
 
-    output_open_foramt = 'wb' if lib_format == 'dat' else 'w'
     output_format_2_writer = {
         'dat': msgpack,
         'yaml': yaml,
         'json': json
     }
 
-    output_lib_path = os.path.join(output, f'hipblasltExtOpLibrary.{lib_format}')
+    if intermediate:
+        # Output per-arch intermediate file
+        output_lib_path = os.path.join(output, f'hipblasltExtOpLibrary_{opt_arch}.{lib_format}')
+        output_open_format = 'wb' if lib_format == 'dat' else 'w'
+        with open(output_lib_path, output_open_format) as f:
+            output_format_2_writer[lib_format].dump(lib_meta, f)
+    else:
+        # merge logic for final file
+        output_lib_path = os.path.join(output, f'hipblasltExtOpLibrary.{lib_format}')
+        output_open_format = 'wb' if lib_format == 'dat' else 'w'
+        if os.path.exists(output_lib_path):
+            update_open_format = 'rb' if lib_format == 'dat' else 'r'
+            with open(output_lib_path, update_open_format) as f:
+                org_content = output_format_2_writer[lib_format].load(f)
 
-    if os.path.exists(output_lib_path):
-        update_open_foramt = 'rb' if lib_format == 'dat' else 'r'
+            lib_meta = {**org_content, **lib_meta}
 
-        # Inline retry loop
-        tries = 30
-        base = 0.02  # seconds
-        for i in range(tries):
-            try:
-                with open(output_lib_path, update_open_foramt) as f:
-                    org_content = output_format_2_writer[lib_format].load(f)
-                break
-            except (PermissionError, OSError) as e:
-                if os.name == 'nt' and (
-                    getattr(e, 'winerror', 0) in (5, 32, 33) or
-                    getattr(e, 'errno', None) in (errno.EACCES, errno.EBUSY)
-                ):
-                    time.sleep(base * (2 ** min(i, 8)) + random.random() * 0.01)
-                    continue
-                else:
-                    raise
-        else:
-            raise PermissionError(f"Could not read '{output_lib_path}' due to sharing violation.")
-
-        lib_meta = {**org_content, **lib_meta}
-
-    # Atomic write: temp file + replace (MoveFileExW on Windows with retry)
-    # Write to a temp file next to the destination so the final rename/replace is atomic.
-    tmp_path = f"{output_lib_path}.tmp-{os.getpid()}-{int(time.time()*1000)}"
-
-    # Serialize to temp first; attempt to flush() + fsync() for durability.
-    with open(tmp_path, output_open_foramt) as f:
-        output_format_2_writer[lib_format].dump(lib_meta, f)
-        try:
-            f.flush()
-            os.fsync(f.fileno())
-        except Exception:
-            pass
-
-    # Final atomic replacement:
-    # - On Windows, prefer MoveFileExW(REPLACE_EXISTING | WRITE_THROUGH) and
-    #   retry on transient sharing violations (WinError 5/32/33).
-    # - Elsewhere, rename within the same directory is atomic and overwrites.
-    def _atomic_replace(src, dst):
-        if os.name == 'nt' and ctypes:
-            MOVEFILE_REPLACE_EXISTING = 0x1
-            MOVEFILE_WRITE_THROUGH = 0x8
-            rc = ctypes.windll.kernel32.MoveFileExW(
-                ctypes.c_wchar_p(src),
-                ctypes.c_wchar_p(dst),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-            )
-            if rc == 0:
-                raise OSError(ctypes.get_last_error(), "MoveFileExW failed")
-        else:
-            # Use rename to overwrite atomically within the same directory
-            os.rename(src, dst)
-
-    # Retry the final replace on Windows sharing violations only.
-    for i in range(120):  # ~6s total with exponential backoff
-        try:
-            _atomic_replace(tmp_path, output_lib_path)
-            break
-        except (PermissionError, OSError) as e:
-            if os.name == 'nt' and (
-                getattr(e, 'winerror', 0) in (5, 32, 33) or
-                getattr(e, 'errno', None) in (errno.EACCES, errno.EBUSY)
-            ):
-                time.sleep(0.05 * (2 ** min(i, 8)) + random.random() * 0.01)
-                continue
-            else:
-                raise
-
-    # Cleanup if temp remains
-    try:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-    except Exception:
-        pass
+        with open(output_lib_path, output_open_format) as f:
+            output_format_2_writer[lib_format].dump(lib_meta, f)

@@ -128,7 +128,7 @@ jobs:
           git config --global core.longpaths true
           python ./build_tools/fetch_sources.py --jobs 12
 
-      - name: Override ExtOpCreateLibrary.py in hipBLASLt (post-fetch)
+      - name: Override ExtOp* in hipBLASLt (post-fetch)
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
@@ -136,40 +136,49 @@ jobs:
           echo "PWD=$(pwd)"
           echo "WORKSPACE=${GITHUB_WORKSPACE}"
 
-          SRC="$GITHUB_WORKSPACE/ExtOpCreateLibrary.py"
-          DST="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite/ExtOpCreateLibrary.py"
+          # Source files in your repo root (adjust if you put them elsewhere)
+          FILES=("ExtOpCreateLibrary.py" "ExtOpMergeLibrary.py")
 
-          if [[ ! -f "$SRC" ]]; then
-            echo "::error::Override source not found at: $SRC"
-            exit 1
-          fi
+          DST_DIR="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite"
 
-          if [[ ! -d "$(dirname "$DST")" ]]; then
-            echo "::error::Destination dir not found: $(dirname "$DST")"
+          if [[ ! -d "$DST_DIR" ]]; then
+            echo "::error::Destination dir not found: $DST_DIR"
             echo "Did 'Fetch sources' run and create hipBLASLt? Listing:"
             ls -la "$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt" || true
             exit 1
           fi
 
-          echo "Copying $SRC -> $DST"
-          cp -f "$SRC" "$DST"
+          for F in "${FILES[@]}"; do
+            SRC="$GITHUB_WORKSPACE/$F"
+            DST="$DST_DIR/$F"
 
-          # Verify the copy (byte-for-byte if cmp exists, else size check)
-          if command -v cmp >/dev/null 2>&1; then
-            cmp -s "$SRC" "$DST"
-          else
-            [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
-          fi
+            if [[ -f "$SRC" ]]; then
+              echo "Copying $SRC -> $DST"
+              cp -f "$SRC" "$DST"
+
+              # Verify the copy (byte-for-byte if cmp exists, else size check)
+              if command -v cmp >/dev/null 2>&1; then
+                cmp -s "$SRC" "$DST"
+              else
+                [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
+              fi
+            else
+              echo "::warning::Override source not found (skipping): $SRC"
+            fi
+          done
 
           # Print SHA256 using the best available tool
           if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$SRC" "$DST"
+            sha256sum "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" 2>/dev/null || true
+            sha256sum "$DST_DIR/ExtOpCreateLibrary.py" "$DST_DIR/ExtOpMergeLibrary.py" 2>/dev/null || true
           elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 "$SRC" "$DST"
+            shasum -a 256 "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" 2>/dev/null || true
+            shasum -a 256 "$DST_DIR/ExtOpCreateLibrary.py" "$DST_DIR/ExtOpMergeLibrary.py" 2>/dev/null || true
           else
             # Windows PowerShell fallback
             powershell.exe -NoProfile -Command \
-              "Get-FileHash -Algorithm SHA256 @('$SRC','$DST') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
+              "Get-FileHash -Algorithm SHA256 @('${GITHUB_WORKSPACE//\\/\/}/ExtOpCreateLibrary.py','${GITHUB_WORKSPACE//\\/\/}/ExtOpMergeLibrary.py') 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) } ; \
+              Get-FileHash -Algorithm SHA256 @('${DST_DIR//\\/\/}/ExtOpCreateLibrary.py','${DST_DIR//\\/\/}/ExtOpMergeLibrary.py') 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }" || true
           fi
 
 
