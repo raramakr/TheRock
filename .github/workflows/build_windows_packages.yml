@@ -128,7 +128,7 @@ jobs:
           git config --global core.longpaths true
           python ./build_tools/fetch_sources.py --jobs 12
 
-      - name: Override ExtOp* in hipBLASLt (post-fetch)
+      - name: Override hipBLASLt files (post-fetch)
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
@@ -136,51 +136,67 @@ jobs:
           echo "PWD=$(pwd)"
           echo "WORKSPACE=${GITHUB_WORKSPACE}"
 
-          # Source files in your repo root (adjust if you put them elsewhere)
-          FILES=("ExtOpCreateLibrary.py" "ExtOpMergeLibrary.py")
+          TENSILE_DIR="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite"
+          EXTOPS_DST_DIR="$GITHUB_WORKSPACE/projects/hipblaslt/device-library/extops"
 
-          DST_DIR="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite"
+          # Ensure destination dirs exist (fetch must have run)
+          for D in "$TENSILE_DIR" "$EXTOPS_DST_DIR"; do
+            if [[ ! -d "$D" ]]; then
+              echo "::error::Destination dir not found: $D"
+              echo "Did 'Fetch sources' run? Listings:"
+              ls -la "$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt" || true
+              ls -la "$GITHUB_WORKSPACE/projects/hipblaslt" || true
+              exit 1
+            fi
+          done
 
-          if [[ ! -d "$DST_DIR" ]]; then
-            echo "::error::Destination dir not found: $DST_DIR"
-            echo "Did 'Fetch sources' run and create hipBLASLt? Listing:"
-            ls -la "$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt" || true
-            exit 1
-          fi
+          # (src -> dest) pairs
+          declare -a SRC_DST_PAIRS=(
+            "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py|$TENSILE_DIR/ExtOpCreateLibrary.py"
+            "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py|$TENSILE_DIR/ExtOpMergeLibrary.py"
+            "$GITHUB_WORKSPACE/CMakeListsTest.txt|$EXTOPS_DST_DIR/CMakeLists.txt"   # <- rename on copy
+          )
 
-          for F in "${FILES[@]}"; do
-            SRC="$GITHUB_WORKSPACE/$F"
-            DST="$DST_DIR/$F"
-
+          # Copy each if present; warn (don’t fail) if missing
+          for pair in "${SRC_DST_PAIRS[@]}"; do
+            SRC="${pair%%|*}"
+            DST="${pair##*|}"
             if [[ -f "$SRC" ]]; then
               echo "Copying $SRC -> $DST"
               cp -f "$SRC" "$DST"
-
-              # Verify the copy (byte-for-byte if cmp exists, else size check)
+              # Verify copy (byte-for-byte if cmp exists; else size check)
               if command -v cmp >/dev/null 2>&1; then
-                cmp -s "$SRC" "$DST"
+                cmp -s "$SRC" "$DST" || { echo "::error::cmp mismatch for $DST"; exit 1; }
               else
-                [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]]
+                [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]] || { echo "::error::size mismatch for $DST"; exit 1; }
               fi
             else
               echo "::warning::Override source not found (skipping): $SRC"
             fi
           done
 
-          # Print SHA256 using the best available tool
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" 2>/dev/null || true
-            sha256sum "$DST_DIR/ExtOpCreateLibrary.py" "$DST_DIR/ExtOpMergeLibrary.py" 2>/dev/null || true
-          elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" 2>/dev/null || true
-            shasum -a 256 "$DST_DIR/ExtOpCreateLibrary.py" "$DST_DIR/ExtOpMergeLibrary.py" 2>/dev/null || true
-          else
-            # Windows PowerShell fallback
-            powershell.exe -NoProfile -Command \
-              "Get-FileHash -Algorithm SHA256 @('${GITHUB_WORKSPACE//\\/\/}/ExtOpCreateLibrary.py','${GITHUB_WORKSPACE//\\/\/}/ExtOpMergeLibrary.py') 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) } ; \
-              Get-FileHash -Algorithm SHA256 @('${DST_DIR//\\/\/}/ExtOpCreateLibrary.py','${DST_DIR//\\/\/}/ExtOpMergeLibrary.py') 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }" || true
-          fi
+          # Show SHA256 for any files that exist (best effort, cross-platform)
+          list_existing() { for p in "$@"; do [[ -f "$p" ]] && printf '%s\n' "$p"; done; }
+          SRC_EXISTING=$(list_existing \
+            "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" \
+            "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" \
+            "$GITHUB_WORKSPACE/CMakeListsTest.txt" || true)
+          DST_EXISTING=$(list_existing \
+            "$TENSILE_DIR/ExtOpCreateLibrary.py" \
+            "$TENSILE_DIR/ExtOpMergeLibrary.py" \
+            "$EXTOPS_DST_DIR/CMakeLists.txt" || true)
 
+          if command -v sha256sum >/dev/null 2>&1; then
+            [[ -n "$SRC_EXISTING" ]] && sha256sum $SRC_EXISTING || true
+            [[ -n "$DST_EXISTING" ]] && sha256sum $DST_EXISTING || true
+          elif command -v shasum >/dev/null 2>&1; then
+            [[ -n "$SRC_EXISTING" ]] && shasum -a 256 $SRC_EXISTING || true
+            [[ -n "$DST_EXISTING" ]] && shasum -a 256 $DST_EXISTING || true
+          else
+            powershell.exe -NoProfile -Command \
+              "Get-FileHash -Algorithm SHA256 @(${SRC_EXISTING//$'\n'/,}) 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) } ; \
+              Get-FileHash -Algorithm SHA256 @(${DST_EXISTING//$'\n'/,}) 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }" || true
+          fi
 
       - name: Configure Projects
         env:
