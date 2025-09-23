@@ -24,6 +24,8 @@ import argparse
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 import re
+import json
+from github_actions.github_actions_utils import *
 
 
 def extract_gpu_details(files):
@@ -156,9 +158,9 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     with open(local_path, "w") as f:
         f.write(html_content)
 
-    print(
-        f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}"
-    )
+    message = f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}"
+    gha_append_step_summary(message)
+    print(message)
 
     try:
         # Upload the index.html to S3 bucket
@@ -168,9 +170,13 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
             "index.html",
             ExtraArgs={"ContentType": "text/html"},
         )
-        print(f"index.html successfully uploaded to bucket '{bucket_name}'.")
+        message = f"index.html successfully uploaded to bucket '{bucket_name}'."
+        gha_append_step_summary(message)
+        print(message)
     except ClientError as e:
-        raise Exception(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
+        message = f"Failed to upload index.html to bucket '{bucket_name}': {e}"
+        gha_append_step_summary(message)
+        raise Exception(message)
 
 
 if __name__ == "__main__":
