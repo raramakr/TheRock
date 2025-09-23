@@ -27,6 +27,18 @@ import glob
 import msgpack
 import yaml
 import json
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Output to stdout (visible in build logs)
+        logging.FileHandler('ExtOpCreateLibrary.log')  # Save to file for debugging
+    ]
+)
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     ap = ArgumentParser(description='Parse op YAMLs and create library for hipBLASLt')
@@ -39,32 +51,44 @@ if __name__ == '__main__':
     ap.add_argument('--intermediate', action='store_true', help='Output intermediate per-arch file instead of merging')
     args = ap.parse_args()
 
-    src_folder: str = args.src
-    lib_format: str = args.format
-    input_format: str = args.input_format
-    co_path: str = args.co
-    output: str = args.output
-    opt_arch: str = args.arch
-    intermediate: bool = args.intermediate
+    src_folder = args.src
+    lib_format = args.format
+    input_format = args.input_format
+    co_path = args.co
+    output = args.output
+    opt_arch = args.arch
+    intermediate = args.intermediate
+
+    logger.info(f"Starting ExtOpCreateLibrary.py with args: src={src_folder}, co={co_path}, input-format={input_format}, format={lib_format}, output={output}, arch={opt_arch}, intermediate={intermediate}")
 
     src_folder = os.path.expandvars(os.path.expanduser(src_folder))
+    logger.info(f"Expanded src_folder: {src_folder}")
 
     lib_meta = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-    for p in glob.glob(f'{src_folder}/*{opt_arch}.{input_format}'):
-        meta_dict = {}
+    input_files = glob.glob(f'{src_folder}/*{opt_arch}.{input_format}')
+    logger.info(f"Found {len(input_files)} input files matching pattern '{src_folder}/*{opt_arch}.{input_format}': {input_files}")
 
-        with open(p) as f:
-            if input_format == 'yaml':
-                meta_dict = yaml.load(f, yaml.SafeLoader)
-            elif input_format == 'json':
-                meta_dict = json.load(f)
+    for p in input_files:
+        logger.info(f"Reading input file: {p}")
+        meta_dict = {}
+        try:
+            with open(p) as f:
+                if input_format == 'yaml':
+                    meta_dict = yaml.load(f, yaml.SafeLoader)
+                elif input_format == 'json':
+                    meta_dict = json.load(f)
+            logger.info(f"Successfully loaded metadata from {p}")
+        except Exception as e:
+            logger.error(f"Failed to load {p}: {str(e)}")
+            raise
 
         meta_dict['co_path'] = os.path.basename(co_path)
         arch = meta_dict.pop('arch')
         op = meta_dict.pop('op')
         datatype = meta_dict['io_type']
         lib_meta[arch][op][datatype].append(meta_dict)
+        logger.info(f"Processed metadata for arch={arch}, op={op}, datatype={datatype}")
 
     output_format_2_writer = {
         'dat': msgpack,
@@ -76,18 +100,36 @@ if __name__ == '__main__':
         # Output per-arch intermediate file
         output_lib_path = os.path.join(output, f'hipblasltExtOpLibrary_{opt_arch}.{lib_format}')
         output_open_format = 'wb' if lib_format == 'dat' else 'w'
-        with open(output_lib_path, output_open_format) as f:
-            output_format_2_writer[lib_format].dump(lib_meta, f)
+        logger.info(f"Writing intermediate file: {output_lib_path}")
+        try:
+            with open(output_lib_path, output_open_format) as f:
+                output_format_2_writer[lib_format].dump(lib_meta, f)
+            logger.info(f"Successfully wrote intermediate file: {output_lib_path}")
+        except Exception as e:
+            logger.error(f"Failed to write intermediate file {output_lib_path}: {str(e)}")
+            raise
     else:
-        # merge logic for final file
+        # Merge logic for final file
         output_lib_path = os.path.join(output, f'hipblasltExtOpLibrary.{lib_format}')
         output_open_format = 'wb' if lib_format == 'dat' else 'w'
+        logger.info(f"Preparing to write final file: {output_lib_path}")
         if os.path.exists(output_lib_path):
             update_open_format = 'rb' if lib_format == 'dat' else 'r'
-            with open(output_lib_path, update_open_format) as f:
-                org_content = output_format_2_writer[lib_format].load(f)
+            logger.info(f"Reading existing file for merge: {output_lib_path}")
+            try:
+                with open(output_lib_path, update_open_format) as f:
+                    org_content = output_format_2_writer[lib_format].load(f)
+                logger.info(f"Successfully read existing file: {output_lib_path}")
+                lib_meta = {**org_content, **lib_meta}
+                logger.info(f"Merged existing metadata with new metadata")
+            except Exception as e:
+                logger.error(f"Failed to read existing file {output_lib_path}: {str(e)}")
+                raise
 
-            lib_meta = {**org_content, **lib_meta}
-
-        with open(output_lib_path, output_open_format) as f:
-            output_format_2_writer[lib_format].dump(lib_meta, f)
+        try:
+            with open(output_lib_path, output_open_format) as f:
+                output_format_2_writer[lib_format].dump(lib_meta, f)
+            logger.info(f"Successfully wrote final file: {output_lib_path}")
+        except Exception as e:
+            logger.error(f"Failed to write final file {output_lib_path}: {str(e)}")
+            raise
