@@ -42,9 +42,6 @@ jobs:
       components: ${{ steps.configure.outputs.components }}
       platform: ${{ steps.configure.outputs.platform }}
     steps:
-      - name: Fix workspace ownership for CI machine
-        run: sudo chown -R $(id -u):$(id -g) "$GITHUB_WORKSPACE"
-
       - name: "Fetch 'build_tools' from repository"
         if: ${{ runner.os == 'Windows' }}
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
