@@ -107,6 +107,10 @@ jobs:
       PLATFORM: ${{ inputs.platform }}
       AMDGPU_FAMILIES: ${{ inputs.amdgpu_families }}
     steps:
+      - name: Fix directory permissions
+        run: |
+          sudo chown -R tester:tester $GITHUB_WORKSPACE
+
       - name: Debug user + workspace perms
         run: |
           echo "whoami: $(whoami)"
