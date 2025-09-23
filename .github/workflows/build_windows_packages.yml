@@ -133,70 +133,86 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -euxo pipefail
-          echo "PWD=$(pwd)"
-          echo "WORKSPACE=${GITHUB_WORKSPACE}"
+          echo "WORKSPACE=$GITHUB_WORKSPACE"
+          pwd
 
-          TENSILE_DIR="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt/tensilelite"
-          EXTOPS_DST_DIR="$GITHUB_WORKSPACE/projects/hipblaslt/device-library/extops"
+          # Expected roots
+          HIPBLASLT_ROOT="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt"
+          TENSILE_DIR="$HIPBLASLT_ROOT/tensilelite"
+          EXTOPS_DST_DIR="$HIPBLASLT_ROOT/device-library/extops"
 
-          # Ensure destination dirs exist (fetch must have run)
-          for D in "$TENSILE_DIR" "$EXTOPS_DST_DIR"; do
-            if [[ ! -d "$D" ]]; then
-              echo "::error::Destination dir not found: $D"
-              echo "Did 'Fetch sources' run? Listings:"
-              ls -la "$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt" || true
-              ls -la "$GITHUB_WORKSPACE/projects/hipblaslt" || true
-              exit 1
+          echo "Expected HIPBLASLT_ROOT: $HIPBLASLT_ROOT"
+          echo "Expected TENSILE_DIR   : $TENSILE_DIR"
+          echo "Expected EXTOPS_DST_DIR: $EXTOPS_DST_DIR"
+
+          # Fallback discovery if paths don't exist (layout drift)
+          if [[ ! -d "$TENSILE_DIR" || ! -d "$EXTOPS_DST_DIR" ]]; then
+            echo "::warning::Expected directories not found; attempting discovery…"
+            # Find tensilelite
+            if [[ ! -d "$TENSILE_DIR" ]]; then
+              TENSILE_DIR="$(find "$GITHUB_WORKSPACE" -type d -path '*/projects/hipblaslt/tensilelite' | head -n 1 || true)"
+              [[ -n "$TENSILE_DIR" ]] || { echo "::error::Could not locate 'tensilelite' dir"; exit 1; }
             fi
-          done
-
-          # (src -> dest) pairs
-          declare -a SRC_DST_PAIRS=(
-            "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py|$TENSILE_DIR/ExtOpCreateLibrary.py"
-            "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py|$TENSILE_DIR/ExtOpMergeLibrary.py"
-            "$GITHUB_WORKSPACE/CMakeListsTest.txt|$EXTOPS_DST_DIR/CMakeLists.txt"   # <- rename on copy
-          )
-
-          # Copy each if present; warn (don’t fail) if missing
-          for pair in "${SRC_DST_PAIRS[@]}"; do
-            SRC="${pair%%|*}"
-            DST="${pair##*|}"
-            if [[ -f "$SRC" ]]; then
-              echo "Copying $SRC -> $DST"
-              cp -f "$SRC" "$DST"
-              # Verify copy (byte-for-byte if cmp exists; else size check)
-              if command -v cmp >/dev/null 2>&1; then
-                cmp -s "$SRC" "$DST" || { echo "::error::cmp mismatch for $DST"; exit 1; }
-              else
-                [[ $(wc -c <"$SRC") -eq $(wc -c <"$DST") ]] || { echo "::error::size mismatch for $DST"; exit 1; }
-              fi
-            else
-              echo "::warning::Override source not found (skipping): $SRC"
+            # Find extops
+            if [[ ! -d "$EXTOPS_DST_DIR" ]]; then
+              EXTOPS_DST_DIR="$(find "$GITHUB_WORKSPACE" -type d -path '*/projects/hipblaslt/device-library/extops' | head -n 1 || true)"
+              [[ -n "$EXTOPS_DST_DIR" ]] || { echo "::error::Could not locate 'device-library/extops' dir"; exit 1; }
             fi
-          done
-
-          # Show SHA256 for any files that exist (best effort, cross-platform)
-          list_existing() { for p in "$@"; do [[ -f "$p" ]] && printf '%s\n' "$p"; done; }
-          SRC_EXISTING=$(list_existing \
-            "$GITHUB_WORKSPACE/ExtOpCreateLibrary.py" \
-            "$GITHUB_WORKSPACE/ExtOpMergeLibrary.py" \
-            "$GITHUB_WORKSPACE/CMakeListsTest.txt" || true)
-          DST_EXISTING=$(list_existing \
-            "$TENSILE_DIR/ExtOpCreateLibrary.py" \
-            "$TENSILE_DIR/ExtOpMergeLibrary.py" \
-            "$EXTOPS_DST_DIR/CMakeLists.txt" || true)
-
-          if command -v sha256sum >/dev/null 2>&1; then
-            [[ -n "$SRC_EXISTING" ]] && sha256sum $SRC_EXISTING || true
-            [[ -n "$DST_EXISTING" ]] && sha256sum $DST_EXISTING || true
-          elif command -v shasum >/dev/null 2>&1; then
-            [[ -n "$SRC_EXISTING" ]] && shasum -a 256 $SRC_EXISTING || true
-            [[ -n "$DST_EXISTING" ]] && shasum -a 256 $DST_EXISTING || true
-          else
-            powershell.exe -NoProfile -Command \
-              "Get-FileHash -Algorithm SHA256 @(${SRC_EXISTING//$'\n'/,}) 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) } ; \
-              Get-FileHash -Algorithm SHA256 @(${DST_EXISTING//$'\n'/,}) 2>$null | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }" || true
+            HIPBLASLT_ROOT="$(cd "$TENSILE_DIR/.." && pwd -P)"
+            echo "Discovered HIPBLASLT_ROOT: $HIPBLASLT_ROOT"
+            echo "Discovered TENSILE_DIR   : $TENSILE_DIR"
+            echo "Discovered EXTOPS_DST_DIR: $EXTOPS_DST_DIR"
           fi
+
+          # Sources (placed at repo root alongside your workflow)
+          SRC_CREATE="$GITHUB_WORKSPACE/ExtOpCreateLibrary.py"
+          SRC_MERGE="$GITHUB_WORKSPACE/ExtOpMergeLibrary.py"
+          SRC_CMAKETEST="$GITHUB_WORKSPACE/CMakeListsTest.txt"
+
+          # Destinations
+          DST_CREATE="$TENSILE_DIR/ExtOpCreateLibrary.py"
+          DST_MERGE="$TENSILE_DIR/ExtOpMergeLibrary.py"
+          DST_CMAKE="$EXTOPS_DST_DIR/CMakeLists.txt"
+
+          echo "Verifying sources exist…"
+          [[ -f "$SRC_CREATE"    ]] || { echo "::error::Missing $SRC_CREATE"; exit 1; }
+          [[ -f "$SRC_MERGE"     ]] || { echo "::error::Missing $SRC_MERGE"; exit 1; }
+          [[ -f "$SRC_CMAKETEST" ]] || { echo "::error::Missing $SRC_CMAKETEST"; exit 1; }
+
+          echo "Copying overrides…"
+          cp -f "$SRC_CREATE"    "$DST_CREATE"
+          cp -f "$SRC_MERGE"     "$DST_MERGE"
+          cp -f "$SRC_CMAKETEST" "$DST_CMAKE"
+
+          echo "Verifying copies…"
+          if command -v cmp >/dev/null 2>&1; then
+            cmp -s "$SRC_CREATE" "$DST_CREATE"
+            cmp -s "$SRC_MERGE"  "$DST_MERGE"
+            cmp -s "$SRC_CMAKETEST" "$DST_CMAKE"
+          else
+            [[ $(wc -c <"$SRC_CREATE")    -eq $(wc -c <"$DST_CREATE")    ]]
+            [[ $(wc -c <"$SRC_MERGE")     -eq $(wc -c <"$DST_MERGE")     ]]
+            [[ $(wc -c <"$SRC_CMAKETEST") -eq $(wc -c <"$DST_CMAKE")     ]]
+          fi
+
+          echo "SHA256 of sources and destinations:"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$SRC_CREATE" "$DST_CREATE"
+            sha256sum "$SRC_MERGE" "$DST_MERGE"
+            sha256sum "$SRC_CMAKETEST" "$DST_CMAKE"
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$SRC_CREATE" "$DST_CREATE"
+            shasum -a 256 "$SRC_MERGE"  "$DST_MERGE"
+            shasum -a 256 "$SRC_CMAKETEST" "$DST_CMAKE"
+          else
+            # PowerShell fallback on Windows runners
+            powershell.exe -NoProfile -Command \
+              "Get-FileHash -Algorithm SHA256 @('$SRC_CREATE','$DST_CREATE','$SRC_MERGE','$DST_MERGE','$SRC_CMAKETEST','$DST_CMAKE') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
+          fi
+
+          echo "List destination dirs for sanity:"
+          ls -la "$TENSILE_DIR"
+          ls -la "$EXTOPS_DST_DIR"
 
       - name: Configure Projects
         env:
