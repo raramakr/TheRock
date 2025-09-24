@@ -153,7 +153,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
 
     # AWS upload signatures depend on timestamps and will fail if the time differs by 5mins
     # This will make sure the Windows machine time is synced
-    if is_windows:
+    if is_windows():
         exec(
             [
                 "schtasks",
