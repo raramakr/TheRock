@@ -154,7 +154,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
     # AWS signatures depend on timestamps and the Windows machine clock may differ by 5mins
     # This will make sure the Windows time is synced
     if is_windows:
-        exec(["w32tm", "/resync"], cwd=Path.cwd())
+        exec(["schtasks", "/run", "/tn", "\\Microsoft\\Windows\\Time Synchronization\\SynchronizeTime"], cwd=Path.cwd())
 
     # Uploading artifacts to S3 bucket
     cmd = [
