@@ -17,6 +17,7 @@ For AWS credentials to upload, reach out to the #rocm-ci channel in the AMD Deve
 """
 
 import argparse
+from datetime import datetime
 import os
 import tarfile
 from pathlib import Path
@@ -154,6 +155,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
     # AWS upload signatures depend on timestamps and will fail if the time differs by 5mins
     # This will make sure the Windows machine time is synced
     if is_windows():
+        log(f"Current time before time sync {str(datetime.now())}")
         exec(
             [
                 "schtasks",
@@ -163,6 +165,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
             ],
             cwd=Path.cwd(),
         )
+        log(f"Current time after time sync {str(datetime.now())}")
 
     # Uploading artifacts to S3 bucket
     cmd = [
