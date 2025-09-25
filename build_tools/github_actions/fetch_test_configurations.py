@@ -47,7 +47,7 @@ test_matrix = {
     },
     "hipsolver": {
         "job_name": "hipsolver",
-        "fetch_artifact_args": "--solver --tests",
+        "fetch_artifact_args": "--blas --tests",
         "timeout_minutes": 60,
         "test_script": f"python {_get_script_path('test_hipsolver.py')}",
         "platform": ["linux", "windows"],
