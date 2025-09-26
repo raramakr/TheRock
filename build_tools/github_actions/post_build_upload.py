@@ -41,7 +41,6 @@ def log(*args):
     sys.stdout.flush()
 
 
-
 def exec(cmd: list[str], cwd: Path):
     log(f"++ Exec [{cwd}]$ {shlex.join(cmd)}")
     subprocess.run(cmd, check=True)
@@ -51,6 +50,7 @@ def exec_pwsh(cmd: list[str], cwd: Path):
     cmd = ["powershell.exe", "-c"] + cmd
     log(f"++ Exec Pwsh [{cwd}]$ {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
+
 
 def is_windows():
     return platform.system().lower() == "windows"
