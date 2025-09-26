@@ -171,7 +171,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
             ],
             cwd=Path.cwd(),
         )
-        
+
         log(f"Retrieving Windows event logs for the Time Service:")
 
         # https://docs.python.org/3/library/shlex.html#shlex.join
@@ -190,11 +190,11 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
 
         exec(
             [
-                'powershell.exe',
-                '-c',
-                'Sleep 1;',
-                'Get-WinEvent -LogName Microsoft-Windows-Time-Service/Operational',
-                '| select-object -First 3',
+                "powershell.exe",
+                "-c",
+                "Sleep 1;",
+                "Get-WinEvent -LogName Microsoft-Windows-Time-Service/Operational",
+                "| select-object -First 3",
                 '| % {  echo "[$($_.TimeCreated)] $($_.Message)" }'
             ],
             cwd=Path.cwd(),
