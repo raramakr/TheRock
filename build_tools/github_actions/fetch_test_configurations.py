@@ -86,7 +86,6 @@ test_matrix = {
         "platform": ["linux"],
         "total_shards": 1,
     },
-
     # SPARSE tests
     "hipsparse": {
         "job_name": "hipsparse",

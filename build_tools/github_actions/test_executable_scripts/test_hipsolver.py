@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 
 cmd = [
     f"{THEROCK_BIN_DIR}/hipsolver-test",
-    "--gtest_filter=*float_complex*-*known_bug*"
+    "--gtest_filter=*float_complex*-*known_bug*",
 ]
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
