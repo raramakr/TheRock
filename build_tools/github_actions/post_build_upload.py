@@ -177,17 +177,17 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
         # https://docs.python.org/3/library/shlex.html#shlex.join
         # The `exec` helper function is a wrapper which logs command lines
         # using `shlex.join()`, which auto quotes each element in the command list
-        # and escapes characters in a Unix-like manner. Set `useShlexCmdLogging` to 
+        # and escapes characters in a Unix-like manner. Set `useShlexCmdLogging` to
         # `False` to prevent this.
         #
-        # On Windows, the logged command line may not correctly represent the actually 
+        # On Windows, the logged command line may not correctly represent the actually
         # executed command line. In this case, it is intentional to prevent quoting as
         # powershell's `-Command` parameter interprets remaining args as one command:
         #
         # python list: ['powershell.exe','-c','Sleep 1;', 'Get-WinEvent -LogName...']
         # shlex.join(...): powershell.exe -c 'Sleep 1;' 'Get-WinEvent -LogName...'
         # ' '.join(...): powershell.exe -c Sleep 1; Get-WinEvent -LogName...
-        
+
         exec(
             [
                 'powershell.exe',
@@ -200,7 +200,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
             cwd=Path.cwd(),
             useShlexCmdLogging=False,
         )
-        
+
         log(f"Current time after time sync {str(datetime.now())}")
 
     # Uploading artifacts to S3 bucket
