@@ -22,7 +22,7 @@ envion_vars["GTEST_TOTAL_SHARDS"] = str(TOTAL_SHARDS)
 logging.basicConfig(level=logging.INFO)
 
 cmd = [
-    f"{THEROCK_BIN_DIR}/hipsolver-test", 
+    f"{THEROCK_BIN_DIR}/hipsolver-test",
     "--gtest_filter=*float_complex*-*known_bug*"
 ]
 
