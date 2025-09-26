@@ -195,7 +195,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
                 "Sleep 1;",
                 "Get-WinEvent -LogName Microsoft-Windows-Time-Service/Operational",
                 "| select-object -First 3",
-                '| % {  echo "[$($_.TimeCreated)] $($_.Message)" }'
+                '| % {  echo "[$($_.TimeCreated)] $($_.Message)" }',
             ],
             cwd=Path.cwd(),
             useShlexCmdLogging=False,
