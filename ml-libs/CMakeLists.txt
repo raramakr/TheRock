@@ -185,13 +185,21 @@ if(THEROCK_ENABLE_HIPDNN)
       therock-spdlog
     RUNTIME_DEPS
   )
-
+  therock_cmake_subproject_glob_c_sources(hipDNN
+  SUBDIRS
+    .
+  )
   therock_cmake_subproject_activate(hipDNN)
 
   therock_provide_artifact(hipdnn
     DESCRIPTOR artifact-hipdnn.toml
     COMPONENTS
+      dbg
+      dev
+      doc
       lib
+      run
+      test
     SUBPROJECT_DEPS
       hipDNN
   )

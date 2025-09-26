@@ -296,6 +296,11 @@ therock_add_feature(MIOPEN
   DESCRIPTION "Enables the MIOpen project (with minimal deps defaults to ON)"
   REQUIRES COMPILER HIP_RUNTIME BLAS RAND ${_optional_profiler_requirements}
 )
+therock_add_feature(HIPDNN
+  GROUP ML_LIBS
+  DESCRIPTION "Enables the hipDNN project"
+  REQUIRES COMPILER HIP_RUNTIME
+)
 
 # Finalize all feature flags.
 therock_finalize_features()
