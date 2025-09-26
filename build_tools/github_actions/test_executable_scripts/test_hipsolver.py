@@ -21,7 +21,10 @@ envion_vars["GTEST_TOTAL_SHARDS"] = str(TOTAL_SHARDS)
 
 logging.basicConfig(level=logging.INFO)
 
-cmd = [f"{THEROCK_BIN_DIR}/hipsolver-test", "--gtest_filter=*float_complex*-*known_bug*"]
+cmd = [
+    f"{THEROCK_BIN_DIR}/hipsolver-test", 
+    "--gtest_filter=*float_complex*-*known_bug*"
+]
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=envion_vars)
