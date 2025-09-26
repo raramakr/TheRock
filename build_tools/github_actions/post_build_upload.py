@@ -56,23 +56,23 @@ def is_windows():
     return platform.system().lower() == "windows"
 
 
-# Windows uses the Time Service to keep time in sync
+# Windows uses the Time Service to keep time in sync using NTP
 # but for non-domain joined machines, it does not run frequently
 # https://serverfault.com/questions/791892/time-sync-on-non-domain-joined-servers
-# Previous attempts to run the scheduled task get queued but never launches.
-# Instead run the same native `sc` (service) command the task is configured to use
+# Previously using `w32tm` or `schtasks` failed due to the Time Service being stopped.
+# Ensure the w32time service is running before running those commands.
+# https://superuser.com/questions/1236850/w32tm-does-not-exist-as-an-installed-service
 def sync_windows_clock():
     log(f"Current time before time sync {str(datetime.now())}")
 
-    exec(
-        [
-            "sc.exe",
-            "start",
-            "w32time",
-            "task_started",
-        ],
-        cwd=Path.cwd(),
-    )
+    log(f"Starting Windows Time Service (w32time)...")
+    exec(["net.exe", "start", "w32time"], cwd=Path.cwd())
+
+    log(f"Querying Windows Time Service source...")
+    exec(["w32tm.exe", "/query", "/source"], cwd=Path.cwd())
+
+    log(f"Syncing Windows Time Service ...")
+    exec(["w32tm.exe", "/resync", "/source"], cwd=Path.cwd())
 
     log(f"Retrieving Windows event logs for the Time Service:")
 
