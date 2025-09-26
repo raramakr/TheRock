@@ -41,16 +41,52 @@ def log(*args):
     sys.stdout.flush()
 
 
-def exec(cmd: list[str], cwd: Path, useShlexCmdLogging: bool = True):
-    if useShlexCmdLogging:
-        log(f"++ Exec [{cwd}]$ {shlex.join(cmd)}")
-    else:
-        log(f"++ Exec [{cwd}]$ {' '.join(cmd)}")
+
+def exec(cmd: list[str], cwd: Path):
+    log(f"++ Exec [{cwd}]$ {shlex.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 
+def exec_pwsh(cmd: list[str], cwd: Path):
+    cmd = ["powershell.exe","-c"] + cmd
+    log(f"++ Exec Pwsh [{cwd}]$ {' '.join(cmd)}")
+    subprocess.run(cmd, check=True)
+
 def is_windows():
     return platform.system().lower() == "windows"
+
+# Windows uses the Time Service to keep time in sync
+# but for non-domain joined machines, it does not run frequently
+# https://serverfault.com/questions/791892/time-sync-on-non-domain-joined-servers
+# Previous attempts to run the scheduled task get queued but never launches.
+# Instead run the same native `sc` (service) command the task is configured to use
+def sync_windows_clock():
+    log(f"Current time before time sync {str(datetime.now())}")
+
+    exec(
+        [
+            "sc.exe",
+            "start",
+            "w32time",
+            "task_started",
+        ],
+        cwd=Path.cwd(),
+    )
+
+    log(f"Retrieving Windows event logs for the Time Service:")
+
+    exec_pwsh(
+        [
+            "Sleep 1;",
+            "Get-WinEvent -LogName Microsoft-Windows-Time-Service/Operational",
+            "| select-object -First 3",
+            '| % {  echo "[$($_.TimeCreated)] $($_.Message)" }',
+        ],
+        cwd=Path.cwd(),
+        useShlexCmdLogging=False,
+    )
+
+    log(f"Current time after time sync {str(datetime.now())}")
 
 
 def check_aws_cli_available():
@@ -158,50 +194,7 @@ def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
     # AWS upload signatures depend on timestamps and will fail if the time differs by 5mins
     # This will make sure the Windows machine time is synced
     if is_windows():
-        log(f"Current time before time sync {str(datetime.now())}")
-
-        # Due to `schtasks /run /tn "\\Microsoft\\Windows\\Time Synchronization\\SynchronizeTime"`
-        # being queued up and not launching, run the command directly.
-        exec(
-            [
-                "sc.exe",
-                "start",
-                "w32time",
-                "task_started",
-            ],
-            cwd=Path.cwd(),
-        )
-
-        log(f"Retrieving Windows event logs for the Time Service:")
-
-        # https://docs.python.org/3/library/shlex.html#shlex.join
-        # The `exec` helper function is a wrapper which logs command lines
-        # using `shlex.join()`, which auto quotes each element in the command list
-        # and escapes characters in a Unix-like manner. Set `useShlexCmdLogging` to
-        # `False` to prevent this.
-        #
-        # On Windows, the logged command line may not correctly represent the actually
-        # executed command line. In this case, it is intentional to prevent quoting as
-        # powershell's `-Command` parameter interprets remaining args as one command:
-        #
-        # python list: ['powershell.exe','-c','Sleep 1;', 'Get-WinEvent -LogName...']
-        # shlex.join(...): powershell.exe -c 'Sleep 1;' 'Get-WinEvent -LogName...'
-        # ' '.join(...): powershell.exe -c Sleep 1; Get-WinEvent -LogName...
-
-        exec(
-            [
-                "powershell.exe",
-                "-c",
-                "Sleep 1;",
-                "Get-WinEvent -LogName Microsoft-Windows-Time-Service/Operational",
-                "| select-object -First 3",
-                '| % {  echo "[$($_.TimeCreated)] $($_.Message)" }',
-            ],
-            cwd=Path.cwd(),
-            useShlexCmdLogging=False,
-        )
-
-        log(f"Current time after time sync {str(datetime.now())}")
+        sync_windows_clock()
 
     # Uploading artifacts to S3 bucket
     cmd = [
