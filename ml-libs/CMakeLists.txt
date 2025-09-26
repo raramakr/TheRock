@@ -155,3 +155,44 @@ if(THEROCK_ENABLE_MIOPEN)
       MIOpen
   )
 endif(THEROCK_ENABLE_MIOPEN)
+
+if(THEROCK_ENABLE_HIPDNN)
+  ##############################################################################
+  # hipDNN
+  ##############################################################################
+
+  therock_cmake_subproject_declare(hipDNN
+    EXTERNAL_SOURCE_DIR "${THEROCK_ROCM_LIBRARIES_SOURCE_DIR}/projects/hipdnn"
+    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/hipDNN"
+    BACKGROUND_BUILD
+    CMAKE_ARGS
+      -DHIP_PLATFORM=amd
+      -DROCM_PATH=
+      -DROCM_DIR=
+      "-DBUILD_TESTING=${THEROCK_BUILD_TESTING}"
+      -DHIP_DNN_BUILD_BACKEND=ON # For now just starting with building backend.
+      -DHIP_DNN_BUILD_FRONTEND=OFF
+      -DHIP_DNN_BUILD_SAMPLES=OFF
+      -DHIP_DNN_BUILD_PLUGINS=OFF 
+    CMAKE_INCLUDES
+      therock_explicit_finders.cmake
+    COMPILER_TOOLCHAIN
+      amd-hip
+    BUILD_DEPS
+      therock-googletest
+      therock-flatbuffers
+      therock-nlohmann-json
+      therock-spdlog
+    RUNTIME_DEPS
+  )
+
+  therock_cmake_subproject_activate(hipDNN)
+
+  therock_provide_artifact(hipdnn
+    DESCRIPTOR artifact-hipdnn.toml
+    COMPONENTS
+      lib
+    SUBPROJECT_DEPS
+      hipDNN
+  )
+endif(THEROCK_ENABLE_HIPDNN)
