@@ -19,7 +19,7 @@ environ_vars["GTEST_TOTAL_SHARDS"] = str(TOTAL_SHARDS)
 
 logging.basicConfig(level=logging.INFO)
 
-envion_vars[
+environ_vars[
     "HIPSPARSE_CLIENTS_MATRICES_DIR"
 ] = f"{OUTPUT_ARTIFACTS_DIR}/clients/matrices/"
 
