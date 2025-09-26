@@ -48,12 +48,13 @@ def exec(cmd: list[str], cwd: Path):
 
 
 def exec_pwsh(cmd: list[str], cwd: Path):
-    cmd = ["powershell.exe","-c"] + cmd
+    cmd = ["powershell.exe", "-c"] + cmd
     log(f"++ Exec Pwsh [{cwd}]$ {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 def is_windows():
     return platform.system().lower() == "windows"
+
 
 # Windows uses the Time Service to keep time in sync
 # but for non-domain joined machines, it does not run frequently
