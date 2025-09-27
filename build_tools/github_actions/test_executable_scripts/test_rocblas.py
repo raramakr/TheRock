@@ -29,7 +29,7 @@ cmd = [
 tests_to_exclude = {
     # Related issue: https://github.com/ROCm/TheRock/issues/1605
     # observed seg faults all have dot functions, f32_c type, batch count 257, among other similarities
-    "gfx942": {
+    "gfx94X-dcgpu": {
         "linux": [
             "_/dot_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
             "_/dot_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_n3_257",
