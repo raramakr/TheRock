@@ -41,7 +41,7 @@ tests_to_exclude = {
 }
 
 if AMDGPU_FAMILIES in tests_to_exclude:
-    exclusion_list = ":".join(tests_to_exclude[AMDGPU_FAMILIES][PLATFORM])
+    exclusion_list = ":".join(tests_to_exclude[AMDGPU_FAMILIES])
     cmd[1] = f"{cmd[1]}:{exclusion_list}"
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
