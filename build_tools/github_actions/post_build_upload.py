@@ -65,6 +65,12 @@ def is_windows():
 def sync_windows_clock():
     log(f"Current time before time sync {str(datetime.now())}")
 
+    log(f"Unregistering Windows Time Service (w32time)...")
+    exec(["w32tm.exe", "/unregister"], cwd=Path.cwd())
+
+    log(f"registering Windows Time Service (w32time)...")
+    exec(["w32tm.exe", "/register"], cwd=Path.cwd())
+
     log(f"Starting Windows Time Service (w32time)...")
     exec(["net.exe", "start", "w32time"], cwd=Path.cwd())
 
