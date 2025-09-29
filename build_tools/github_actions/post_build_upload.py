@@ -65,20 +65,24 @@ def is_windows():
 def sync_windows_clock():
     log(f"Current time before time sync {str(datetime.now())}")
 
-    log(f"Unregistering Windows Time Service (w32time)...")
-    exec(["w32tm.exe", "/unregister"], cwd=Path.cwd())
+    exec_pwsh(['Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\services\W32Time\Config" -Name "AnnounceFlags" -Value 5 '])
+    exec_pwsh(['Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\w32time\TimeProviders\NtpServer" -Name "Enabled" -Value 1'])
+    exec_pwsh (["Restart-Service w32Time"])
 
-    log(f"registering Windows Time Service (w32time)...")
-    exec(["w32tm.exe", "/register"], cwd=Path.cwd())
+    # log(f"Unregistering Windows Time Service (w32time)...")
+    # exec(["w32tm.exe", "/unregister"], cwd=Path.cwd())
 
-    log(f"Starting Windows Time Service (w32time)...")
-    exec(["net.exe", "start", "w32time"], cwd=Path.cwd())
+    # log(f"registering Windows Time Service (w32time)...")
+    # exec(["w32tm.exe", "/register"], cwd=Path.cwd())
+
+    # log(f"Starting Windows Time Service (w32time)...")
+    # exec(["net.exe", "start", "w32time"], cwd=Path.cwd())
 
     log(f"Querying Windows Time Service source...")
     exec(["w32tm.exe", "/query", "/source"], cwd=Path.cwd())
 
     log(f"Syncing Windows Time Service ...")
-    exec(["w32tm.exe", "/resync", "/source"], cwd=Path.cwd())
+    exec(["w32tm.exe", "/resync"], cwd=Path.cwd())
 
     log(f"Retrieving Windows event logs for the Time Service:")
 
