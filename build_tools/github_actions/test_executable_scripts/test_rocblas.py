@@ -38,7 +38,7 @@ tests_to_exclude = {
         # "_/dotc_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
         # "_/dotc_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_n3_257",
         # "_/dotc_strided_batched.blas1/quick_blas1_strided_batched_f32_c_13000_n3_39000_n3_39000_257_0",
-        #"_/dotc_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
+        # "_/dotc_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
     ]
 }
 
