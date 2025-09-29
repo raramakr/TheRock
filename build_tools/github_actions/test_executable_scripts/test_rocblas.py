@@ -29,14 +29,16 @@ tests_to_exclude = {
     # Related issue: https://github.com/ROCm/TheRock/issues/1605
     # observed seg faults all have dot functions, f32_c type, batch count 257, among other similarities
     "gfx94X-dcgpu": [
-        "_/dot_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
-        "_/dot_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_n3_257",
-        "_/dot_strided_batched.blas1/quick_blas1_strided_batched_f32_c_13000_n3_39000_n3_39000_257_0",
-        "_/dot_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
-        "_/dotc_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
-        "_/dotc_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_n3_257",
-        "_/dotc_strided_batched.blas1/quick_blas1_strided_batched_f32_c_13000_n3_39000_n3_39000_257_0",
-        "_/dotc_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
+        "_/dot*_batched*.blas1*/quick_blas1_*batched_f32_c_*n3_*n3_*257*",
+        # single string covers the specific tests below:
+        # "_/dot_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
+        # "_/dot_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_16000_n3_n3_257",
+        # "_/dot_strided_batched.blas1/quick_blas1_strided_batched_f32_c_13000_n3_39000_n3_39000_257_0",
+        # "_/dot_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
+        # "_/dotc_batched.blas1/quick_blas1_batched_f32_c_13000_n3_n3_257_0",
+        # "_/dotc_batched_ex.blas1_ex/quick_blas1_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_n3_257",
+        # "_/dotc_strided_batched.blas1/quick_blas1_strided_batched_f32_c_13000_n3_39000_n3_39000_257_0",
+        #"_/dotc_strided_batched_ex.blas1_ex/quick_blas1_strided_batched_f32_c_f32_c_f32_c_f32_c_13000_n3_39000_n3_39000_257",
     ]
 }
 

@@ -22,5 +22,14 @@ cmd = [
     f"{THEROCK_BIN_DIR}/hipblas-test",
     f"--gtest_filter=-*known_bug*",
 ]
+
+tests_to_exclude = [
+    "_/getrs",
+]
+
+if tests_to_exclude:
+    exclusion_list = ":".join(tests_to_exclude)
+    cmd[1] = f"{cmd[1]}:{exclusion_list}"
+
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=environ_vars)

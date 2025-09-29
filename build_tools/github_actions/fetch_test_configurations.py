@@ -35,7 +35,7 @@ test_matrix = {
         "timeout_minutes": 60,
         "test_script": f"python {_get_script_path('test_rocblas.py')}",
         "platform": ["linux", "windows"],
-        "total_shards": 4,
+        "total_shards": 6,
     },
     "hipblas": {
         "job_name": "hipblas",
