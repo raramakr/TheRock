@@ -24,7 +24,7 @@ cmd = [
 ]
 
 tests_to_exclude = [
-    "_/getrs",
+    "_/getrs*",
 ]
 
 if tests_to_exclude:
