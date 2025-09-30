@@ -26,14 +26,14 @@ envion_vars["GTEST_TOTAL_SHARDS"] = str(TOTAL_SHARDS)
 # Otherwise, we run the normal test suite
 smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST_ENABLED", "false"))
 if smoke_test_enabled:
-    test_filter = f"--yaml {THEROCK_BIN_DIR}/rocsparse_smoke.yaml"
+    test_filter = ["--yaml", f"{THEROCK_BIN_DIR}/rocsparse_smoke.yaml"]
 else:
-    test_filter = "--gtest_filter=*quick*"
+    test_filter = ["--gtest_filter=*quick*"]
 
 cmd = [
     f"{THEROCK_BIN_DIR}/rocsparse-test",
     "--matrices-dir",
     f"{OUTPUT_ARTIFACTS_DIR}/clients/matrices/",
-] + [test_filter]
+] + test_filter
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=envion_vars)

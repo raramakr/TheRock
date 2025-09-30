@@ -25,11 +25,11 @@ logging.basicConfig(level=logging.INFO)
 # Otherwise, we run the normal test suite
 smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST_ENABLED", "false"))
 if smoke_test_enabled:
-    test_filter = f"--yaml {THEROCK_BIN_DIR}/rocblas_smoke.yaml"
+    test_filter = ["--yaml", f"{THEROCK_BIN_DIR}/rocblas_smoke.yaml"]
 else:
-    test_filter = "--gtest_filter=*quick*:*pre_checkin*-*known_bug*"
+    test_filter = ["--gtest_filter=*quick*:*pre_checkin*-*known_bug*"]
 
-cmd = [f"{THEROCK_BIN_DIR}/rocblas-test"] + [test_filter]
+cmd = [f"{THEROCK_BIN_DIR}/rocblas-test"] + test_filter
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 
 subprocess.run(
