@@ -5,6 +5,8 @@ on:
     inputs:
       amdgpu_families:
         type: string
+      test_labels:
+        type: string
       artifact_run_id:
         type: string
       test_runs_on:
