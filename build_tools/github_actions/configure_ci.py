@@ -43,7 +43,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 import string
 from amdgpu_family_matrix import (
     amdgpu_family_info_matrix_presubmit,
@@ -216,7 +216,7 @@ def matrix_generator(
     base_args={},
     families={},
     platform="linux",
-):
+) -> Tuple[List, List[str]]:
     """Generates a matrix of "family" and "test-runs-on" parameters based on the workflow inputs."""
 
     # Select target names based on inputs. Targets will be filtered by platform afterwards.
@@ -288,8 +288,9 @@ def matrix_generator(
         for key in amdgpu_family_info_matrix_nightly:
             selected_target_names.append(key)
 
-    # Ensure the targets in the list are unique
+    # Ensure the lists are unique
     unique_target_names = list(set(selected_target_names))
+    unique_test_names = list(set(selected_test_names))
 
     # Expand selected target names back to a matrix.
     matrix_output = []
@@ -300,7 +301,8 @@ def matrix_generator(
             matrix_output.append(platform_set.get(platform))
 
     print(f"Generated build matrix: {str(matrix_output)}")
-    return matrix_output
+    print(f"Generated test list: {str(unique_test_names)}")
+    return matrix_output, unique_test_names
 
 
 # --------------------------------------------------------------------------- #
@@ -324,7 +326,7 @@ def main(base_args, linux_families, windows_families):
     print("")
 
     print(f"Generating build matrix for Linux: {str(linux_families)}")
-    linux_target_output = matrix_generator(
+    linux_target_output, linux_test_output = matrix_generator(
         is_pull_request,
         is_workflow_dispatch,
         is_push,
@@ -336,7 +338,7 @@ def main(base_args, linux_families, windows_families):
     print("")
 
     print(f"Generating build matrix for Windows: {str(windows_families)}")
-    windows_target_output = matrix_generator(
+    windows_target_output, windows_test_output = matrix_generator(
         is_pull_request,
         is_workflow_dispatch,
         is_push,
@@ -362,8 +364,10 @@ def main(base_args, linux_families, windows_families):
         f"""## Workflow configure results
 
 * `linux_amdgpu_families`: {str([item.get("family") for item in linux_target_output])}
+* `linux_test_labels`: {str([test for test in linux_test_output])}
 * `linux_use_prebuilt_artifacts`: {json.dumps(base_args.get("linux_use_prebuilt_artifacts"))}
 * `windows_amdgpu_families`: {str([item.get("family") for item in windows_target_output])}
+* `windows_test_labels`: {str([test for test in windows_test_output])}
 * `windows_use_prebuilt_artifacts`: {json.dumps(base_args.get("windows_use_prebuilt_artifacts"))}
 * `enable_build_jobs`: {json.dumps(enable_build_jobs)}
     """
@@ -371,7 +375,9 @@ def main(base_args, linux_families, windows_families):
 
     output = {
         "linux_amdgpu_families": json.dumps(linux_target_output),
+        "linux_test_labels": json.dumps(linux_test_output),
         "windows_amdgpu_families": json.dumps(windows_target_output),
+        "windows_test_labels": json.dumps(windows_test_output),
         "enable_build_jobs": json.dumps(enable_build_jobs),
     }
     gha_set_output(output)
