@@ -12,6 +12,7 @@ _deps
 sources/
 .vscode/
 *.venv
+*venv
 __pycache__
 /.ccache
 
