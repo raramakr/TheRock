@@ -2,11 +2,14 @@ import logging
 import os
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 THEROCK_BIN_DIR = os.getenv("THEROCK_BIN_DIR")
 SCRIPT_DIR = Path(__file__).resolve().parent
 THEROCK_DIR = SCRIPT_DIR.parent.parent.parent
+sys.path.append(str(THEROCK_DIR / "build_tools" / "github_actions"))
+from github_actions_utils import *
 
 # GTest sharding
 SHARD_INDEX = os.getenv("SHARD_INDEX", 1)
@@ -144,14 +147,45 @@ negative_filter.append("Full/GPU_ConvGrpActivInfer3D_BFP16")  # 0 min 27 sec
 negative_filter.append("Full/GPU_ConvGrpActivInfer3D_FP32")  # 0 min 22 sec
 negative_filter.append("Full/GPU_ConvGrpActivInfer3D_FP16")  # 0 min 16 sec
 
+# Creating a smoke test filter
 ####################################################
 
-gtest_final_filter_cmd = (
-    "--gtest_filter=" + ":".join(positive_filter) + "-" + ":".join(negative_filter)
-)
+smoke_filter = [
+    # Batch norm FWD smoke tests
+    "Smoke/GPU_BNCKFWDTrainLarge2D_FP16",
+    "Smoke/GPU_BNOCLFWDTrainLarge2D_FP16",
+    "Smoke/GPU_BNOCLFWDTrainLarge3D_FP16",
+    "Smoke/GPU_BNCKFWDTrainLarge2D_BFP16",
+    "Smoke/GPU_BNOCLFWDTrainLarge2D_BFP16",
+    "Smoke/GPU_BNOCLFWDTrainLarge3D_BFP16",
+    "Smoke/GPU_BNFWDTrainSmall2D_FP32",
+    "Smoke/GPU_BNFWDTrainLarge2D_FP32",
+    "Smoke/GPU_BNFWDTrainSmall3D_FP32",
+    "Smoke/GPU_BNFWDTrainSmall2D_FP64",
+    "Smoke/GPU_BNFWDTrainLarge2D_FP64",
+    "Smoke/GPU_BNFWDTrainSmall3D_FP64",
+    # CK Grouped FWD Conv smoke tests
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_I8",
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_FP16",
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_BFP16",
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_FP32",
+    "Smoke/CPU_UnitTestConvSolverImplicitGemmFwdXdlopsDevApplicability_NONE",
+]
+
+####################################################
+
+# If smoke tests are enabled, we run smoke tests only.
+# Otherwise, we run the normal test suite
+smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST", "false"))
+if smoke_test_enabled:
+    test_filter = "--gtest_filter=" + ":".join(smoke_filter)
+else:
+    test_filter = (
+        "--gtest_filter=" + ":".join(positive_filter) + "-" + ":".join(negative_filter)
+    )
 
 #############################################
 
-cmd = [f"{THEROCK_BIN_DIR}/miopen_gtest", gtest_final_filter_cmd]
+cmd = [f"{THEROCK_BIN_DIR}/miopen_gtest", test_filter]
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=envion_vars)

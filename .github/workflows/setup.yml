@@ -12,6 +12,9 @@ on:
       windows_amdgpu_families:
         description: Windows families to run builds and tests for.
         value: ${{ jobs.setup.outputs.windows_amdgpu_families }}
+      smoke_test_enabled:
+        description: Run smoke tests only.
+        value: ${{ jobs.setup.outputs.windows_amdgpu_families }}
 
 permissions:
   contents: read
@@ -27,6 +30,7 @@ jobs:
       enable_build_jobs: ${{ steps.configure.outputs.enable_build_jobs }}
       linux_amdgpu_families: ${{ steps.configure.outputs.linux_amdgpu_families }}
       windows_amdgpu_families: ${{ steps.configure.outputs.windows_amdgpu_families }}
+      smoke_test_enabled: ${{ steps.configure.outputs.smoke_test_enabled }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0

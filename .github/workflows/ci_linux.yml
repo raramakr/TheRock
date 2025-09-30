@@ -13,6 +13,8 @@ on:
         type: boolean
       use_prebuilt_artifacts:
         type: string
+      smoke_test_enabled:
+        type: string
 
 permissions:
   contents: read
@@ -51,3 +53,4 @@ jobs:
       amdgpu_families: ${{ inputs.amdgpu_families }}
       test_runs_on: ${{ inputs.test_runs_on }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
+      smoke_test_enabled: ${{ inputs.smoke_test_enabled }}
