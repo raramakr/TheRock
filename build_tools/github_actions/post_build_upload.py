@@ -64,19 +64,18 @@ def is_windows():
 # https://superuser.com/questions/1236850/w32tm-does-not-exist-as-an-installed-service
 def sync_windows_clock():
     log(f"Current time before time sync {str(datetime.now())}")
+    
+    log(f"Configuring Windows Time Service to use NTP...")
 
-    exec_pwsh(['Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\services\W32Time\Config" -Name "AnnounceFlags" -Value 5 '])
-    exec_pwsh(['Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\w32time\TimeProviders\NtpServer" -Name "Enabled" -Value 1'])
+    exec_pwsh(["Set-ItemProperty -Path"
+               '"HKLM:\\SYSTEM\\CurrentControlSet\\services\\W32Time\\Config"'
+               '-Name "AnnounceFlags" -Value 5'])
+    
+    exec_pwsh(["Set-ItemProperty -Path"
+               '"HKLM:\\SYSTEM\\CurrentControlSet\\Services\\w32time\\TimeProviders\\NtpServer"'
+               '-Name "Enabled" -Value 1'])
+    
     exec_pwsh (["Restart-Service w32Time"])
-
-    # log(f"Unregistering Windows Time Service (w32time)...")
-    # exec(["w32tm.exe", "/unregister"], cwd=Path.cwd())
-
-    # log(f"registering Windows Time Service (w32time)...")
-    # exec(["w32tm.exe", "/register"], cwd=Path.cwd())
-
-    # log(f"Starting Windows Time Service (w32time)...")
-    # exec(["net.exe", "start", "w32time"], cwd=Path.cwd())
 
     log(f"Querying Windows Time Service source...")
     exec(["w32tm.exe", "/query", "/source"], cwd=Path.cwd())
