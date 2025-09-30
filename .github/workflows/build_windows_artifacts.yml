@@ -107,6 +107,55 @@ jobs:
           git config --global core.longpaths true
           python ./build_tools/fetch_sources.py --jobs 12
 
+      - name: Override hipBLASLt files (post-fetch)
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euxo pipefail
+          echo "WORKSPACE=$GITHUB_WORKSPACE"
+          pwd
+          # Expected roots
+          HIPBLASLT_ROOT="$GITHUB_WORKSPACE/rocm-libraries/projects/hipblaslt"
+          EXTOPS_DST_DIR="$HIPBLASLT_ROOT/device-library/extops"
+
+          echo "Expected HIPBLASLT_ROOT: $HIPBLASLT_ROOT"
+          echo "Expected EXTOPS_DST_DIR: $EXTOPS_DST_DIR"
+
+          # Fallback discovery if paths don't exist
+          if [[ ! -d "$EXTOPS_DST_DIR" ]]; then
+            echo "::warning::Expected directory not found; attempting discovery…"
+            EXTOPS_DST_DIR="$(find "$GITHUB_WORKSPACE" -type d -path '*/projects/hipblaslt/device-library/extops' | head -n 1 || true)"
+            [[ -n "$EXTOPS_DST_DIR" ]] || { echo "::error::Could not locate 'device-library/extops' dir"; exit 1; }
+            HIPBLASLT_ROOT="$(cd "$EXTOPS_DST_DIR/../.." && pwd -P)"
+            echo "Discovered HIPBLASLT_ROOT: $HIPBLASLT_ROOT"
+            echo "Discovered EXTOPS_DST_DIR: $EXTOPS_DST_DIR"
+          fi
+          # Source file
+          SRC_CMAKETEST="$GITHUB_WORKSPACE/CMakeListsTest.txt"
+          # Destination
+          DST_CMAKE="$EXTOPS_DST_DIR/CMakeLists.txt"
+          echo "Verifying source exists…"
+          [[ -f "$SRC_CMAKETEST" ]] || { echo "::error::Missing $SRC_CMAKETEST"; exit 1; }
+          echo "Copying override…"
+          cp -f "$SRC_CMAKETEST" "$DST_CMAKE"
+          echo "Verifying copy…"
+          if command -v cmp >/dev/null 2>&1; then
+            cmp -s "$SRC_CMAKETEST" "$DST_CMAKE"
+          else
+            [[ $(wc -c <"$SRC_CMAKETEST") -eq $(wc -c <"$DST_CMAKE") ]]
+          fi
+          echo "SHA256 of source and destination:"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$SRC_CMAKETEST" "$DST_CMAKE"
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$SRC_CMAKETEST" "$DST_CMAKE"
+          else
+            powershell.exe -NoProfile -Command \
+              "Get-FileHash -Algorithm SHA256 @('$SRC_CMAKETEST','$DST_CMAKE') | ForEach-Object { Write-Host ($_.Path + ' ' + $_.Hash) }"
+          fi
+          echo "List destination dir for sanity:"
+          ls -la "$EXTOPS_DST_DIR"
+
       - name: Configure Projects
         env:
           amdgpu_families: ${{ inputs.amdgpu_families }}
@@ -115,10 +164,19 @@ jobs:
         run: |
           # clear cache before build and after download
           ccache -z
-          python3 build_tools/github_actions/build_configure.py
+          python3 build_tools/github_actions/build_configure.py --verbose
+          echo "CMake configuration output:"
+          cat "${{ env.BUILD_DIR }}/CMakeFiles/CMakeOutput.log"
+          echo "CMake error output (if any):"
+          cat "${{ env.BUILD_DIR }}/CMakeFiles/CMakeError.log" || true
 
       - name: Build therock-archives and therock-dist
-        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-archives therock-dist -- -k 0
+        env:
+          PYTHONUNBUFFERED: "1"
+          HIPBLASLT_EXTOP_VERBOSE: "3"
+          TEATIME_FORCE_INTERACTIVE: "1"
+        run: |
+          cmake --build "${{ env.BUILD_DIR }}" --target therock-archives therock-dist -- -v -k 0
 
       - name: Report
         if: ${{ !cancelled() }}
@@ -137,6 +195,10 @@ jobs:
             echo "CCache Stats:"
             echo "-------------"
             ccache -s
+            if [ -f "${{ env.BUILD_DIR }}/device-library/extops/hipblasltExtOpLibrary.dat" ]; then
+              echo "Contents of hipblasltExtOpLibrary.dat:"
+              python3 -c "import msgpack; with open('${{ env.BUILD_DIR }}/device-library/extops/hipblasltExtOpLibrary.dat', 'rb') as f: print(msgpack.load(f))"
+            fi
           else
             echo "[ERROR] Build directory ${{ env.BUILD_DIR }} does not exist. Skipping report!"
             echo "        This should only happen if the CI is cancelled before the build step."
