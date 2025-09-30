@@ -72,7 +72,8 @@ def sync_windows_clock():
             "Set-ItemProperty -Path"
             '"HKLM:\\SYSTEM\\CurrentControlSet\\services\\W32Time\\Config"'
             '-Name "AnnounceFlags" -Value 5'
-        ]
+        ], 
+        cwd=Path.cwd()
     )
 
     exec_pwsh(
@@ -80,7 +81,8 @@ def sync_windows_clock():
             "Set-ItemProperty -Path"
             '"HKLM:\\SYSTEM\\CurrentControlSet\\Services\\w32time\\TimeProviders\\NtpServer"'
             '-Name "Enabled" -Value 1'
-        ]
+        ], 
+        cwd=Path.cwd()
     )
 
     exec_pwsh(["Restart-Service w32Time"])
