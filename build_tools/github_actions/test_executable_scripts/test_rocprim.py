@@ -33,14 +33,11 @@ cmd = [
 
 # If smoke tests are enabled, we run smoke tests only.
 # Otherwise, we run the normal test suite
+environ_vars = os.environ.copy()
 smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST_ENABLED", "false"))
 if smoke_test_enabled:
-    cmd = [f"GTEST_FILTER='{SMOKE_TESTS}'"] + cmd
+    environ_vars["GTEST_FILTER"] = f"'{SMOKE_TESTS}'"
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 
-subprocess.run(
-    cmd,
-    cwd=THEROCK_DIR,
-    check=True,
-)
+subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=environ_vars)
