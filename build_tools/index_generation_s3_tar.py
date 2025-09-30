@@ -44,7 +44,9 @@ def generate_index_s3(s3_client, bucket_name):
         paginator = s3_client.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(Bucket=bucket_name)
     except NoCredentialsError:
-        raise Exception("AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
+        raise Exception(
+            "AWS credentials not found"
+        )
     except ClientError as e:
         raise Exception(f"Error accessing bucket {bucket_name}: {e}")
 
@@ -69,7 +71,9 @@ def generate_index_s3(s3_client, bucket_name):
 
     # Prepare filter options and files array for JS
     gpu_families = extract_gpu_details(files)
-    gpu_families_options = "".join([f'<option value="{family}">{family}</option>' for family in gpu_families])
+    gpu_families_options = "".join(
+        [f'<option value="{family}">{family}</option>' for family in gpu_families]
+    )
     files_js_array = json.dumps([{"name": f[0], "mtime": f[1]} for f in files])
 
     # HTML content for displaying files
@@ -151,7 +155,12 @@ def generate_index_s3(s3_client, bucket_name):
     print(message)
 
     try:
-        s3_client.upload_file(local_path, bucket_name, "index.html", ExtraArgs={"ContentType": "text/html"})
+        s3_client.upload_file(
+            local_path,
+            bucket_name,
+            "index.html",
+            ExtraArgs={"ContentType": "text/html"},
+        )
         message = f"index.html successfully uploaded to bucket '{bucket_name}'."
         gha_append_step_summary(message)
         print(message)
@@ -162,7 +171,9 @@ def generate_index_s3(s3_client, bucket_name):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate index.html for S3 bucket .tar.gz files")
+    parser = argparse.ArgumentParser(
+        description="Generate index.html for S3 bucket .tar.gz files"
+    )
     parser.add_argument("--bucket", required=True, help="S3 bucket name")
     parser.add_argument("--region", default="us-east-2", help="AWS region name")
     args = parser.parse_args()
