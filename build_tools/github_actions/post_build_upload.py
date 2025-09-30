@@ -85,7 +85,7 @@ def sync_windows_clock():
         cwd=Path.cwd(),
     )
 
-    exec_pwsh(["Restart-Service w32Time"])
+    exec_pwsh(["Restart-Service w32Time"], cwd=Path.cwd())
 
     log(f"Querying Windows Time Service source...")
     exec(["w32tm.exe", "/query", "/source"], cwd=Path.cwd())
