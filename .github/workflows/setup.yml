@@ -14,7 +14,7 @@ on:
         value: ${{ jobs.setup.outputs.windows_amdgpu_families }}
       smoke_test_enabled:
         description: Run smoke tests only.
-        value: ${{ jobs.setup.outputs.windows_amdgpu_families }}
+        value: ${{ jobs.setup.outputs.smoke_test_enabled }}
 
 permissions:
   contents: read
