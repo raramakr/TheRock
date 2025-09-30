@@ -29,7 +29,7 @@ if smoke_test_enabled:
 else:
     test_filter = "--gtest_filter=*pre_checkin*"
 
-cmd = [f"{THEROCK_BIN_DIR}/hipblaslt-test"] + [test_filter]
+cmd = [f"{THEROCK_BIN_DIR}/hipblaslt-test", test_filter]
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(cmd, cwd=THEROCK_DIR, check=True, env=envion_vars)
