@@ -51,6 +51,7 @@ from amdgpu_family_matrix import (
     amdgpu_family_info_matrix_nightly,
     amdgpu_family_info_matrix_all,
 )
+from fetch_test_configurations import test_matrix
 
 from github_actions_utils import *
 
@@ -187,22 +188,24 @@ def get_pr_labels(args) -> List[str]:
     return labels
 
 
-def filter_known_target_names(requested_target_names: List[str]) -> List[str]:
-    """Filters a requested target names list down to known target names."""
-    target_names = []
-    for target_name in requested_target_names:
-        # Standardize on lowercase target names.
+def filter_known_names(
+    requested_names: List[str], known_names_matrix: set, name_type: str
+) -> List[str]:
+    """Filters a requested names list down to known names."""
+    filtered_names = []
+    for name in requested_names:
+        # Standardize on lowercase names.
         # This helps prevent potential user-input errors.
-        target_name = target_name.lower()
+        name = name.lower()
 
-        if target_name in amdgpu_family_info_matrix_all:
-            target_names.append(target_name)
+        if name in known_names_matrix:
+            filtered_names.append(name)
         else:
             print(
-                f"WARNING: unknown target name '{target_name}' not found in matrix:\n{amdgpu_family_info_matrix_all}"
+                f"WARNING: unknown {name_type} name '{name}' not found in matrix:\n{known_names_matrix}"
             )
 
-    return target_names
+    return filtered_names
 
 
 def matrix_generator(
@@ -218,6 +221,10 @@ def matrix_generator(
 
     # Select target names based on inputs. Targets will be filtered by platform afterwards.
     selected_target_names = []
+    # Select test names based on label inputs, if applied. If no test labels apply, use default logic.
+    # Default logic is to run all tests right now; Default logic in short-term: smoke tests
+    # Default logic in long term: auto-detect what tests need to run
+    selected_test_names = []
 
     if is_workflow_dispatch:
         print(f"[WORKFLOW_DISPATCH] Generating build matrix with {str(base_args)}")
@@ -230,7 +237,11 @@ def matrix_generator(
         translator = str.maketrans(string.punctuation, " " * len(string.punctuation))
         requested_target_names = input_gpu_targets.translate(translator).split()
 
-        selected_target_names.extend(filter_known_target_names(requested_target_names))
+        selected_target_names.extend(
+            filter_known_names(
+                requested_target_names, amdgpu_family_info_matrix_all, "target"
+            )
+        )
 
     if is_pull_request:
         print(f"[PULL_REQUEST] Generating build matrix with {str(base_args)}")
@@ -243,12 +254,23 @@ def matrix_generator(
         # TODO(#1097): This (or the code below) should handle opting in for
         #     a GPU family for only one platform (e.g. Windows but not Linux)
         requested_target_names = []
+        requested_test_names = []
         pr_labels = get_pr_labels(base_args)
         for label in pr_labels:
             if "gfx" in label:
                 target, _ = label.split("-")
                 requested_target_names.append(target)
-        selected_target_names.extend(filter_known_target_names(requested_target_names))
+            if "test:" in label:
+                test, _ = label.split(":")
+                requested_test_names.append(test)
+        selected_target_names.extend(
+            filter_known_names(
+                requested_target_names, amdgpu_family_info_matrix_all, "target"
+            )
+        )
+        selected_test_names.extend(
+            filter_known_names(requested_test_names, test_matrix, "test")
+        )
 
     if is_push and base_args.get("branch_name") == "main":
         print(f"[PUSH - MAIN] Generating build matrix with {str(base_args)}")
