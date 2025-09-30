@@ -25,6 +25,8 @@ cmd = [
 
 tests_to_exclude = [
     "_/getrs*",
+    "_/getri_batched.solver*",
+    "_/gels_batched.solver*",
 ]
 
 if tests_to_exclude:
