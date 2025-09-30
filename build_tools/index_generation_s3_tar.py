@@ -25,82 +25,71 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 import re
 import json
-from github_actions.github_actions_utils import *
+from github_actions.github_actions_utils import gha_append_step_summary
 
 
 def extract_gpu_details(files):
     gpu_family_pattern = re.compile(r"gfx(?:\d+[A-Za-z]*|\w+)")
     gpu_families = set()
-
     for file_name, _ in files:
         match = gpu_family_pattern.search(file_name)
         if match:
             gpu_families.add(match.group(0))
+    return sorted(list(gpu_families))
 
-    return list(gpu_families)
 
-
-def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
-    # Initialize S3 client
-    s3 = boto3.client("s3", region_name=region_name)
-
+def generate_index_s3(s3_client, bucket_name):
+    # List all objects and select .tar.gz keys
     try:
-        # List objects in the S3 bucket
-        response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+        paginator = s3_client.get_paginator("list_objects_v2")
+        page_iterator = paginator.paginate(Bucket=bucket_name)
     except NoCredentialsError:
-        raise Exception(
-            "AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
-        )
+        raise Exception("AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
     except ClientError as e:
         raise Exception(f"Error accessing bucket {bucket_name}: {e}")
 
-    if "dev" in bucket_name.lower():
+    files = []
+    for page in page_iterator:
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if key.endswith(".tar.gz"):
+                files.append((key, obj["LastModified"].timestamp()))
+
+    if not files:
+        raise Exception(f"No .tar.gz files found in bucket {bucket_name}.")
+
+    # Page title
+    bucket_lower = bucket_name.lower()
+    if "dev" in bucket_lower:
         page_title = "ROCm SDK dev tarballs"
-    elif "nightly" in bucket_name.lower():
+    elif "nightly" in bucket_lower or "nightlies" in bucket_lower:
         page_title = "ROCm SDK nightly tarballs"
     else:
         page_title = "ROCm SDK tarballs"
 
-    if "Contents" not in response:
-        raise Exception(
-            f"No objects found in bucket {bucket_name} with prefix '{prefix}'."
-        )
-
-    files = [
-        (obj["Key"], obj["LastModified"].timestamp())
-        for obj in response["Contents"]
-        if obj["Key"].endswith(".tar.gz")
-    ]
-
-    if not files:
-        raise Exception(
-            f"No .tar.gz files found in bucket {bucket_name} with prefix '{prefix}'."
-        )
-
-    # Extract GPU family names from files
+    # Prepare filter options and files array for JS
     gpu_families = extract_gpu_details(files)
-    gpu_families_options = "".join(
-        [f'<option value="{family}">{family}</option>' for family in gpu_families]
-    )
-
-    # Perpare array of file details for HTML rendering
-    files_js_array = str([{"name": f[0], "mtime": f[1]} for f in files]).replace(
-        "'", '"'
-    )
+    gpu_families_options = "".join([f'<option value="{family}">{family}</option>' for family in gpu_families])
+    files_js_array = json.dumps([{"name": f[0], "mtime": f[1]} for f in files])
 
     # HTML content for displaying files
     html_content = f"""
     <html>
     <head>
         <title>{page_title}</title>
+        <meta charset="utf-8"/>
+        <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <style>
             body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }}
             h1 {{ color: #0056b3; }}
             select {{ margin-bottom: 10px; padding: 5px; font-size: 16px; }}
             ul {{ list-style-type: none; padding: 0; }}
             li {{ margin-bottom: 5px; padding: 10px; background-color: white; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }}
-            a {{ text-decoration: none; color: #0056b3; }}
+            a {{ text-decoration: none; color: #0056b3; word-break: break-all; }}
             a:hover {{ color: #003d82; }}
+            .controls {{ display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }}
+            label {{ font-weight: bold; }}
         </style>
         <script>
             const files = {files_js_array};
@@ -113,9 +102,8 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
                 ul.innerHTML = '';
                 fileList.forEach(file => {{
                     const li = document.createElement('li');
-                    const urlEncodedKey = encodeURIComponent(file.name).replace(/%2F/g, '/');
-                    const s3Url = `https://{bucket_name}.s3.{region_name}.amazonaws.com/${{urlEncodedKey}}`;
-                    li.innerHTML = `<a href="${{s3Url}}" target="_blank">${{file.name}}</a>`;
+                    const href = encodeURIComponent(file.name).replace(/%2F/g, '/');
+                    li.innerHTML = `<a href="${{href}}" target="_blank" rel="noopener noreferrer">${{file.name}}</a>`;
                     ul.appendChild(li);
                 }});
             }}
@@ -137,13 +125,13 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     </head>
     <body>
         <h1>{page_title}</h1>
-        <div>
-            <label for="sortOrder">Sort by: </label>
+        <div class="controls">
+            <label for="sortOrder">Sort by:</label>
             <select id="sortOrder">
                 <option value="desc">Last Updated (Recent to Old)</option>
                 <option value="asc">First Updated (Old to Recent)</option>
             </select>
-            <label for="filter">Filter by: </label>
+            <label for="filter">Filter by:</label>
             <select id="filter">
                 <option value="all">All</option>
                 {gpu_families_options}
@@ -155,7 +143,7 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     """
 
     local_path = "index.html"
-    with open(local_path, "w") as f:
+    with open(local_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     message = f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}"
@@ -163,13 +151,7 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
     print(message)
 
     try:
-        # Upload the index.html to S3 bucket
-        s3.upload_file(
-            local_path,
-            bucket_name,
-            "index.html",
-            ExtraArgs={"ContentType": "text/html"},
-        )
+        s3_client.upload_file(local_path, bucket_name, "index.html", ExtraArgs={"ContentType": "text/html"})
         message = f"index.html successfully uploaded to bucket '{bucket_name}'."
         gha_append_step_summary(message)
         print(message)
@@ -180,12 +162,9 @@ def generate_index_s3(bucket_name, region_name="us-east-2", prefix=""):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate index.html for S3 bucket tar.gz files."
-    )
+    parser = argparse.ArgumentParser(description="Generate index.html for S3 bucket .tar.gz files")
     parser.add_argument("--bucket", required=True, help="S3 bucket name")
+    parser.add_argument("--region", default="us-east-2", help="AWS region name")
     args = parser.parse_args()
-
-    region_name = "us-east-2"
-    prefix = ""
-    generate_index_s3(bucket_name=args.bucket, region_name=region_name, prefix=prefix)
+    s3 = boto3.client("s3", region_name=args.region)
+    generate_index_s3(s3_client=s3, bucket_name=args.bucket)
