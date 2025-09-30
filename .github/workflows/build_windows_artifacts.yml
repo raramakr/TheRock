@@ -165,10 +165,6 @@ jobs:
           # clear cache before build and after download
           ccache -z
           python3 build_tools/github_actions/build_configure.py --verbose
-          echo "CMake configuration output:"
-          cat "${{ env.BUILD_DIR }}/CMakeFiles/CMakeOutput.log"
-          echo "CMake error output (if any):"
-          cat "${{ env.BUILD_DIR }}/CMakeFiles/CMakeError.log" || true
 
       - name: Build therock-archives and therock-dist
         env:
