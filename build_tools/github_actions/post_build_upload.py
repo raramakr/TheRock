@@ -55,7 +55,7 @@ def exec_pwsh(cmd: list[str], cwd: Path):
 def is_windows():
     return platform.system().lower() == "windows"
 
-
+import time
 # Windows uses the Time Service to keep time in sync using NTP
 # but for non-domain joined machines, it does not run frequently
 # https://serverfault.com/questions/791892/time-sync-on-non-domain-joined-servers
@@ -64,6 +64,9 @@ def is_windows():
 # https://superuser.com/questions/1236850/w32tm-does-not-exist-as-an-installed-service
 def sync_windows_clock():
     log(f"Current time before time sync {str(datetime.now())}")
+
+    log(f"Suspend for interactive debugging")
+    time.sleep(6*3600)
 
     log(f"Configuring Windows Time Service to use NTP...")
 
