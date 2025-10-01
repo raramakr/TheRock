@@ -26,6 +26,7 @@ jobs:
     uses: ./.github/workflows/build_windows_artifacts.yml
     secrets: inherit
     with:
+      package_version: ${{ inputs.rocm_package_version }}
       amdgpu_families: ${{ inputs.amdgpu_families }}
       expect_failure: ${{ inputs.expect_failure }}
     permissions:
