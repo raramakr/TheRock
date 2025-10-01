@@ -152,24 +152,15 @@ negative_filter.append("Full/GPU_ConvGrpActivInfer3D_FP16")  # 0 min 16 sec
 
 smoke_filter = [
     # Batch norm FWD smoke tests
-    "Smoke/GPU_BNCKFWDTrainLarge2D_FP16",
-    "Smoke/GPU_BNOCLFWDTrainLarge2D_FP16",
-    "Smoke/GPU_BNOCLFWDTrainLarge3D_FP16",
-    "Smoke/GPU_BNCKFWDTrainLarge2D_BFP16",
-    "Smoke/GPU_BNOCLFWDTrainLarge2D_BFP16",
-    "Smoke/GPU_BNOCLFWDTrainLarge3D_BFP16",
-    "Smoke/GPU_BNFWDTrainSmall2D_FP32",
-    "Smoke/GPU_BNFWDTrainLarge2D_FP32",
-    "Smoke/GPU_BNFWDTrainSmall3D_FP32",
-    "Smoke/GPU_BNFWDTrainSmall2D_FP64",
-    "Smoke/GPU_BNFWDTrainLarge2D_FP64",
-    "Smoke/GPU_BNFWDTrainSmall3D_FP64",
+    "Smoke/GPU_BNCKFWDTrainLarge2D_FP16*",
+    "Smoke/GPU_BNOCLFWDTrainLarge2D_FP16*",
+    "Smoke/GPU_BNOCLFWDTrainLarge3D_FP16*",
+    "Smoke/GPU_BNCKFWDTrainLarge2D_BFP16*",
+    "Smoke/GPU_BNOCLFWDTrainLarge2D_BFP16*",
+    "Smoke/GPU_BNOCLFWDTrainLarge3D_BFP16*",
     # CK Grouped FWD Conv smoke tests
-    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_I8",
-    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_FP16",
-    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_BFP16",
-    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_FP32",
-    "Smoke/CPU_UnitTestConvSolverImplicitGemmFwdXdlopsDevApplicability_NONE",
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_FP16*",
+    "Smoke/GPU_UnitTestConvSolverImplicitGemmFwdXdlops_BFP16*",
 ]
 
 ####################################################

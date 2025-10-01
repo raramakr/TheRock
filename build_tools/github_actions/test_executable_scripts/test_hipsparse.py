@@ -23,7 +23,10 @@ envion_vars[
     "HIPSPARSE_CLIENTS_MATRICES_DIR"
 ] = f"{OUTPUT_ARTIFACTS_DIR}/clients/matrices/"
 
-cmd = [f"{THEROCK_BIN_DIR}/hipsparse-test", "--gtest_filter=*spmv*:*spsv*:*spsm*:*spmm*:*csric0*:*csrilu0*"]
+cmd = [
+    f"{THEROCK_BIN_DIR}/hipsparse-test",
+    "--gtest_filter=*spmv*:*spsv*:*spsm*:*spmm*:*csric0*:*csrilu0*",
+]
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")
 subprocess.run(
     cmd,
