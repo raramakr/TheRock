@@ -60,29 +60,33 @@ def get_current_date():
     return datetime.today().strftime("%Y%m%d")
 
 
-def compute_version(args: argparse.Namespace):
-    if args.override_base_version:
-        base_version = args.override_base_version
+def compute_version(
+    release_type: str | None,
+    custom_version_suffix: str | None,
+    override_base_version: str | None,
+) -> str:
+    if override_base_version:
+        base_version = override_base_version
     else:
         base_version = load_rocm_version()
     _log(f"Base version  : '{base_version}'")
 
-    if args.custom_version_suffix:
+    if custom_version_suffix:
         # Trust the custom suffix to satify the general rules:
         # https://packaging.python.org/en/latest/specifications/version-specifiers/
-        version_suffix = args.custom_version_suffix
-    if args.release_type == "dev":
+        version_suffix = custom_version_suffix
+    elif release_type == "dev":
         # Construct a dev release version:
         # https://packaging.python.org/en/latest/specifications/version-specifiers/#developmental-releases
         git_sha = get_git_sha()
         version_suffix = f".dev0+{git_sha}"
-    elif args.release_type == "nightly":
+    elif release_type == "nightly":
         # Construct a nightly (pre-release) version:
         # https://packaging.python.org/en/latest/specifications/version-specifiers/#pre-releases
         current_date = get_current_date()
         version_suffix = f"rc{current_date}"
     else:
-        raise ValueError(f"Unhandled release type '{args.release_type}'")
+        raise ValueError(f"Unhandled release type '{release_type}'")
     _log(f"Version suffix: '{version_suffix}'")
 
     rocm_package_version = base_version + version_suffix
@@ -115,7 +119,11 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
-    rocm_package_version = compute_version(args)
+    rocm_package_version = compute_version(
+        args.release_type,
+        args.custom_version_suffix,
+        args.override_base_version,
+    )
     gha_set_output({"rocm_package_version": rocm_package_version})
 
 
