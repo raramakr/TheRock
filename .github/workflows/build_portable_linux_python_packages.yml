@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   build:
-    name: Build | ${{ inputs.amdgpu_family }}
+    name: Build Python | ${{ inputs.amdgpu_family }}
     # Note: GitHub-hosted runners run out of disk space for some gpu families
     runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-linux-scale-rocm' || 'ubuntu-24.04' }}
     env:
