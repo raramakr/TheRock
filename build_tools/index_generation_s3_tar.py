@@ -25,6 +25,7 @@ import re
 import json
 import logging
 from github_actions.github_actions_utils import gha_append_step_summary
+
 log = logging.getLogger(__name__)
 
 
@@ -53,7 +54,9 @@ def generate_index_s3(s3_client, bucket_name, upload=False):
         page_iterator = paginator.paginate(Bucket=bucket_name)
     except NoCredentialsError:
         # Preserve specific exception type for callers to handle
-        log.exception("AWS credentials not found when accessing bucket '%s'", bucket_name)
+        log.exception(
+            "AWS credentials not found when accessing bucket '%s'", bucket_name
+        )
         raise
     except ClientError as e:
         # Map common S3 errors to standard exceptions with chaining; otherwise re-raise
@@ -160,7 +163,7 @@ def generate_index_s3(s3_client, bucket_name, upload=False):
     </body>
     </html>
     """
-    
+
     # Write locally
     local_path = "index.html"
     with open(local_path, "w", encoding="utf-8") as f:
@@ -171,18 +174,29 @@ def generate_index_s3(s3_client, bucket_name, upload=False):
     # Upload to bucket root
     if upload:
         try:
-            s3_client.upload_file(local_path, bucket_name, "index.html", ExtraArgs={"ContentType": "text/html"})
+            s3_client.upload_file(
+                local_path,
+                bucket_name,
+                "index.html",
+                ExtraArgs={"ContentType": "text/html"},
+            )
             message = "index.html successfully uploaded to the bucket root."
             gha_append_step_summary(message)
 
         except ClientError as e:
             code = e.response.get("Error", {}).get("Code")
             if code in {"AccessDenied", "UnauthorizedOperation"}:
-                raise PermissionError(f"Access denied uploading to bucket '{bucket_name}'") from e
+                raise PermissionError(
+                    f"Access denied uploading to bucket '{bucket_name}'"
+                ) from e
             if code in {"NoSuchBucket", "404"}:
-                raise FileNotFoundError(f"Bucket '{bucket_name}' not found during upload") from e
+                raise FileNotFoundError(
+                    f"Bucket '{bucket_name}' not found during upload"
+                ) from e
             log.error("Failed to upload index.html to bucket '%s': %s", bucket_name, e)
-            gha_append_step_summary(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
+            gha_append_step_summary(
+                f"Failed to upload index.html to bucket '{bucket_name}': {e}"
+            )
             raise
 
     return local_path
@@ -194,7 +208,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--bucket", required=True, help="S3 bucket name")
     parser.add_argument("--region", default="us-east-2", help="AWS region name")
-    parser.add_argument("--upload", action="store_true", help="Upload index.html back to S3 (default: do not upload)")
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload index.html back to S3 (default: do not upload)",
+    )
     args = parser.parse_args()
     s3 = boto3.client("s3", region_name=args.region)
     generate_index_s3(s3_client=s3, bucket_name=args.bucket, upload=args.upload)
