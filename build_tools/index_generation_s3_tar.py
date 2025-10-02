@@ -9,14 +9,12 @@ Script to generate an index.html listing .tar.gz files in an S3 bucket, performi
 Requirements:
  * `boto3` Python package must be installed, e.g.: pip install boto3
 
-Examples:
-Generate index.html for all tarballs in a bucket:
+Usage:
+Generate index.html for all tarballs in a bucket to test locally:
 ./index_generation_s3_tar.py --bucket <bucketname>
 
-
-Generate index.html for files under a prefix and in a specific region:
-./index_generation_s3_tar.py --bucket <bucketname> --prefix nightly/ --region us-east-1
-
+Generate index.html for all tarballs in a bucket and upload:
+./index_generation_s3_tar.py --bucket <bucketname> --upload
 """
 
 import os
@@ -25,10 +23,20 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 import re
 import json
+import logging
 from github_actions.github_actions_utils import gha_append_step_summary
+log = logging.getLogger(__name__)
 
 
 def extract_gpu_details(files):
+    """
+    Regex details:
+    Regex: r"gfx(?:\d+[A-Za-z]*|\w+)" — 'gfx' + digits (optionally letters) or general word chars.
+    Require a letter after digits? Change [A-Za-z]* to [A-Za-z]+.
+    Only want digit-led tokens (no 'gfx_ip')? Remove the '|\\w+' branch.
+    Enforce uppercase suffixes only? Use [A-Z]* (or [A-Z]+) instead of [A-Za-z]*.
+    Need to match 'GFX' as well as 'gfx'? Compile with re.IGNORECASE.
+    """
     gpu_family_pattern = re.compile(r"gfx(?:\d+[A-Za-z]*|\w+)")
     gpu_families = set()
     for file_name, _ in files:
@@ -38,17 +46,24 @@ def extract_gpu_details(files):
     return sorted(list(gpu_families))
 
 
-def generate_index_s3(s3_client, bucket_name):
+def generate_index_s3(s3_client, bucket_name, upload=False):
     # List all objects and select .tar.gz keys
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(Bucket=bucket_name)
     except NoCredentialsError:
-        raise Exception(
-            "AWS credentials not found"
-        )
+        # Preserve specific exception type for callers to handle
+        log.exception("AWS credentials not found when accessing bucket '%s'", bucket_name)
+        raise
     except ClientError as e:
-        raise Exception(f"Error accessing bucket {bucket_name}: {e}")
+        # Map common S3 errors to standard exceptions with chaining; otherwise re-raise
+        code = e.response.get("Error", {}).get("Code")
+        if code in {"AccessDenied", "UnauthorizedOperation"}:
+            raise PermissionError(f"Access denied to bucket '{bucket_name}'") from e
+        if code in {"NoSuchBucket", "404"}:
+            raise FileNotFoundError(f"Bucket '{bucket_name}' not found") from e
+        log.exception("ClientError while accessing bucket '%s'", bucket_name)
+        raise
 
     files = []
     for page in page_iterator:
@@ -58,7 +73,7 @@ def generate_index_s3(s3_client, bucket_name):
                 files.append((key, obj["LastModified"].timestamp()))
 
     if not files:
-        raise Exception(f"No .tar.gz files found in bucket {bucket_name}.")
+        raise FileNotFoundError(f"No .tar.gz files found in bucket {bucket_name}.")
 
     # Page title
     bucket_lower = bucket_name.lower()
@@ -145,29 +160,32 @@ def generate_index_s3(s3_client, bucket_name):
     </body>
     </html>
     """
-
+    
+    # Write locally
     local_path = "index.html"
     with open(local_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     message = f"index.html generated successfully for bucket '{bucket_name}'. File saved as {local_path}"
     gha_append_step_summary(message)
-    print(message)
+    # Upload to bucket root
+    if upload:
+        try:
+            s3_client.upload_file(local_path, bucket_name, "index.html", ExtraArgs={"ContentType": "text/html"})
+            message = "index.html successfully uploaded to the bucket root."
+            gha_append_step_summary(message)
 
-    try:
-        s3_client.upload_file(
-            local_path,
-            bucket_name,
-            "index.html",
-            ExtraArgs={"ContentType": "text/html"},
-        )
-        message = f"index.html successfully uploaded to bucket '{bucket_name}'."
-        gha_append_step_summary(message)
-        print(message)
-    except ClientError as e:
-        message = f"Failed to upload index.html to bucket '{bucket_name}': {e}"
-        gha_append_step_summary(message)
-        raise Exception(message)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code in {"AccessDenied", "UnauthorizedOperation"}:
+                raise PermissionError(f"Access denied uploading to bucket '{bucket_name}'") from e
+            if code in {"NoSuchBucket", "404"}:
+                raise FileNotFoundError(f"Bucket '{bucket_name}' not found during upload") from e
+            log.error("Failed to upload index.html to bucket '%s': %s", bucket_name, e)
+            gha_append_step_summary(f"Failed to upload index.html to bucket '{bucket_name}': {e}")
+            raise
+
+    return local_path
 
 
 if __name__ == "__main__":
@@ -176,6 +194,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--bucket", required=True, help="S3 bucket name")
     parser.add_argument("--region", default="us-east-2", help="AWS region name")
+    parser.add_argument("--upload", action="store_true", help="Upload index.html back to S3 (default: do not upload)")
     args = parser.parse_args()
     s3 = boto3.client("s3", region_name=args.region)
-    generate_index_s3(s3_client=s3, bucket_name=args.bucket)
+    generate_index_s3(s3_client=s3, bucket_name=args.bucket, upload=args.upload)
