@@ -169,11 +169,13 @@ if(THEROCK_ENABLE_HIPDNN)
       -DHIP_PLATFORM=amd
       -DROCM_PATH=
       -DROCM_DIR=
-      "-DBUILD_TESTING=${THEROCK_BUILD_TESTING}"
-      -DHIP_DNN_BUILD_BACKEND=ON # For now just starting with building backend.
-      -DHIP_DNN_BUILD_FRONTEND=OFF
-      -DHIP_DNN_BUILD_SAMPLES=OFF
-      -DHIP_DNN_BUILD_PLUGINS=OFF 
+      "-DHIP_DNN_SKIP_TESTS=${THEROCK_BUILD_TESTING}"
+      -DHIP_DNN_BUILD_BACKEND=ON
+      -DHIP_DNN_BUILD_FRONTEND=ON
+      -DHIP_DNN_BUILD_PLUGINS=OFF
+      -DHIP_DNN_GENERATE_SDK_HEADERS=OFF
+      -DENABLE_CLANG_TIDY=OFF
+      -DENABLE_CLANG_FORMAT=OFF
     CMAKE_INCLUDES
       therock_explicit_finders.cmake
     COMPILER_TOOLCHAIN
@@ -182,8 +184,10 @@ if(THEROCK_ENABLE_HIPDNN)
       therock-googletest
       therock-flatbuffers
       therock-nlohmann-json
+      therock-fmt
       therock-spdlog
     RUNTIME_DEPS
+      hip-clr
   )
   therock_cmake_subproject_glob_c_sources(hipDNN
   SUBDIRS
