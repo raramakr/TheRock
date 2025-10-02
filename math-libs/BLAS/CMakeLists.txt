@@ -282,6 +282,14 @@ if(THEROCK_ENABLE_SPARSE)
   # hipSPARSELt
   ##############################################################################
 
+  set(hipSPARSELt_optional_deps)
+  if(NOT WIN32)
+    # hipSPARSELt is hard-coded to not expect rocm-smi on Windows.
+    list(APPEND hipSPARSELt_optional_deps
+      rocm_smi_lib
+    )
+  endif()
+
   therock_cmake_subproject_declare(hipSPARSELt
     EXTERNAL_SOURCE_DIR "${THEROCK_ROCM_LIBRARIES_SOURCE_DIR}/projects/hipsparselt"
     BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/hipSPARSELt"
@@ -302,6 +310,7 @@ if(THEROCK_ENABLE_SPARSE)
       therock-googletest
     RUNTIME_DEPS
       hip-clr
+      ${hipSPARSELt_optional_deps}
   )
   therock_cmake_subproject_glob_c_sources(hipSPARSELt
     SUBDIRS
