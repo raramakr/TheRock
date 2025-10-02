@@ -23,9 +23,7 @@ envion_vars[
     "HIPSPARSE_CLIENTS_MATRICES_DIR"
 ] = f"{OUTPUT_ARTIFACTS_DIR}/clients/matrices/"
 
-cmd = [
-    f"{THEROCK_BIN_DIR}/hipsparse-test"
-]
+cmd = [f"{THEROCK_BIN_DIR}/hipsparse-test"]
 
 test_type = os.getenv("TEST_TYPE", "all")
 if test_type == "smoke":
