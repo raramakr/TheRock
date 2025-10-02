@@ -2,14 +2,11 @@ import logging
 import os
 import shlex
 import subprocess
-import sys
 from pathlib import Path
 
 THEROCK_BIN_DIR = os.getenv("THEROCK_BIN_DIR")
 SCRIPT_DIR = Path(__file__).resolve().parent
 THEROCK_DIR = SCRIPT_DIR.parent.parent.parent
-sys.path.append(str(THEROCK_DIR / "build_tools" / "github_actions"))
-from github_actions_utils import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,8 +30,8 @@ cmd = [
 # If smoke tests are enabled, we run smoke tests only.
 # Otherwise, we run the normal test suite
 environ_vars = os.environ.copy()
-smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST_ENABLED", "false"))
-if smoke_test_enabled:
+test_type = os.getenv("TEST_TYPE", "all")
+if test_type == "smoke":
     environ_vars["GTEST_FILTER"] = f"'{SMOKE_TESTS}'"
 
 logging.info(f"++ Exec [{THEROCK_DIR}]$ {shlex.join(cmd)}")

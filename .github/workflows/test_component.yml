@@ -14,7 +14,7 @@ on:
         type: string
       component:
         type: string
-      smoke_test_enabled:
+      test_type:
         type: string
 
 permissions:
@@ -79,7 +79,7 @@ jobs:
         env:
           SHARD_INDEX: ${{ matrix.shard }}
           TOTAL_SHARDS: ${{ fromJSON(inputs.component).total_shards }}
-          SMOKE_TEST_ENABLED: ${{ inputs.smoke_test_enabled }}
+          TEST_TYPE: ${{ inputs.test_type }}
         run: |
           ${{ fromJSON(inputs.component).test_script }}
 

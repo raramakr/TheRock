@@ -2,15 +2,12 @@ import logging
 import os
 import shlex
 import subprocess
-import sys
 from pathlib import Path
 
-THEROCK_BIN_DIR = os.getenv("THEROCK_BIN_DIR")
-OUTPUT_ARTIFACTS_DIR = os.getenv("OUTPUT_ARTIFACTS_DIR")
+THEROCK_BIN_DIR = Path(os.getenv("THEROCK_BIN_DIR")).resolve()
+OUTPUT_ARTIFACTS_DIR = Path(os.getenv("OUTPUT_ARTIFACTS_DIR")).resolve()
 SCRIPT_DIR = Path(__file__).resolve().parent
-THEROCK_DIR = SCRIPT_DIR.parent.parent.parent
-sys.path.append(str(THEROCK_DIR / "build_tools" / "github_actions"))
-from github_actions_utils import *
+THEROCK_DIR = SCRIPT_DIR.parent.parent.parent.resolve()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,8 +21,8 @@ envion_vars["GTEST_TOTAL_SHARDS"] = str(TOTAL_SHARDS)
 
 # If smoke tests are enabled, we run smoke tests only.
 # Otherwise, we run the normal test suite
-smoke_test_enabled = str2bool(os.getenv("SMOKE_TEST_ENABLED", "false"))
-if smoke_test_enabled:
+test_type = os.getenv("TEST_TYPE", "all")
+if test_type == "smoke":
     test_filter = ["--yaml", f"{THEROCK_BIN_DIR}/rocsparse_smoke.yaml"]
 else:
     test_filter = ["--gtest_filter=*quick*"]
