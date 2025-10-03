@@ -221,12 +221,8 @@ class ConfigureCITest(unittest.TestCase):
         self.assert_target_output_is_valid(
             target_output=linux_target_output, allow_xfail=False
         )
-        self.assertTrue(
-            any("hipblas" == entry for entry in linux_test_labels)
-        )
-        self.assertTrue(
-            any("rocblas" == entry for entry in linux_test_labels)
-        )
+        self.assertTrue(any("hipblas" == entry for entry in linux_test_labels))
+        self.assertTrue(any("rocblas" == entry for entry in linux_test_labels))
         self.assertGreaterEqual(len(linux_test_labels), 2)
 
     def test_invalid_test_label_linux_pull_request_matrix_generator(self):

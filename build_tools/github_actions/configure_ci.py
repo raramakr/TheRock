@@ -246,9 +246,7 @@ def matrix_generator(
         requested_target_names = input_gpu_targets.translate(translator).split()
 
         selected_target_names.extend(
-            filter_known_names(
-                requested_target_names, "target"
-            )
+            filter_known_names(requested_target_names, "target")
         )
 
     if is_pull_request:
@@ -272,13 +270,9 @@ def matrix_generator(
                 test, _ = label.split(":")
                 requested_test_names.append(test)
         selected_target_names.extend(
-            filter_known_names(
-                requested_target_names, "target"
-            )
+            filter_known_names(requested_target_names, "target")
         )
-        selected_test_names.extend(
-            filter_known_names(requested_test_names, "test")
-        )
+        selected_test_names.extend(filter_known_names(requested_test_names, "test"))
 
     if is_push and base_args.get("branch_name") == "main":
         print(f"[PUSH - MAIN] Generating build matrix with {str(base_args)}")
