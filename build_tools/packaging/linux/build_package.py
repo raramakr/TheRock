@@ -80,7 +80,7 @@ def create_deb_package(pkg_name, config: PackageConfig):
     create_nonversioned_deb_package(pkg_name, config)
     create_versioned_deb_package(pkg_name, config)
     move_packages_to_destination(pkg_name, config)
-
+    clean_debian_build_dir()
 
 def create_nonversioned_deb_package(pkg_name, config: PackageConfig):
     """Function to create non versioned deb package
@@ -425,7 +425,7 @@ def create_rpm_package(pkg_name, config: PackageConfig):
     create_nonversioned_rpm_package(pkg_name, config)
     create_versioned_rpm_package(pkg_name, config)
     move_packages_to_destination(pkg_name, config)
-
+    clean_rpm_build_dir()
 
 def generate_spec_file(pkg_name, specfile, config: PackageConfig):
     """Generate spec file for rpm package
@@ -791,6 +791,28 @@ def download_and_extract_artifacts(run_id, gfxarch):
         sys.exit(1)
 
 
+def clean_rpm_build_dir():
+    """Clean the rpm build directory
+
+    Parameters: None
+    Returns: None
+    """
+    if os.path.exists(RPM_CONTENTS_DIR) and os.path.isdir(RPM_CONTENTS_DIR):
+        shutil.rmtree(RPM_CONTENTS_DIR)
+        print(f"Removed directory: {RPM_CONTENTS_DIR}")
+
+
+def clean_debian_build_dir():
+    """Clean the debian build directory
+
+    Parameters: None
+    Returns: None
+    """
+    if os.path.exists(DEBIAN_CONTENTS_DIR) and os.path.isdir(DEBIAN_CONTENTS_DIR):
+        shutil.rmtree(DEBIAN_CONTENTS_DIR)
+        print(f"Removed directory: {DEBIAN_CONTENTS_DIR}")
+
+
 def clean_artifacts_dir(artifacts_dir):
     """Clean the artifacts directory
 
@@ -804,18 +826,13 @@ def clean_artifacts_dir(artifacts_dir):
         shutil.rmtree(artifacts_dir)
         print(f"Removed directory: {artifacts_dir}")
 
-    if os.path.exists(DEBIAN_CONTENTS_DIR) and os.path.isdir(DEBIAN_CONTENTS_DIR):
-        shutil.rmtree(DEBIAN_CONTENTS_DIR)
-        print(f"Removed directory: {DEBIAN_CONTENTS_DIR}")
-    if os.path.exists(RPM_CONTENTS_DIR) and os.path.isdir(RPM_CONTENTS_DIR):
-        shutil.rmtree(RPM_CONTENTS_DIR)
-        print(f"Removed directory: {RPM_CONTENTS_DIR}")
-
     PYCACHE_DIR = "__pycache__"
     if os.path.exists(PYCACHE_DIR) and os.path.isdir(PYCACHE_DIR):
         shutil.rmtree(PYCACHE_DIR)
         print(f"Removed directory: {PYCACHE_DIR}")
 
+    clean_rpm_build_dir()
+    clean_debian_build_dir()
 
 def run(args: argparse.Namespace):
     # Clean the packaging artifacts
