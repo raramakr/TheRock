@@ -10,11 +10,14 @@ Requirements:
  * `boto3` Python package must be installed, e.g.: pip install boto3
 
 Usage:
+Running locally without specifying a bucket will use the default bucket "therock-dev-tarball":
+ ./index_generation_s3_tar.py
+
 Generate index.html for all tarballs in a bucket to test locally:
-./index_generation_s3_tar.py --bucket <bucketname>
+ ./index_generation_s3_tar.py --bucket therock-dev-tarball
 
 Generate index.html for all tarballs in a bucket and upload:
-./index_generation_s3_tar.py --bucket <bucketname> --upload
+ ./index_generation_s3_tar.py --bucket therock-dev-tarball --upload
 """
 
 import os
@@ -30,15 +33,13 @@ log = logging.getLogger(__name__)
 
 
 def extract_gpu_details(files):
-    """
-    Regex details:
-    Regex: r"gfx(?:\d+[A-Za-z]*|\w+)" — 'gfx' + digits (optionally letters) or general word chars.
-    Require a letter after digits? Change [A-Za-z]* to [A-Za-z]+.
-    Only want digit-led tokens (no 'gfx_ip')? Remove the '|\\w+' branch.
-    Enforce uppercase suffixes only? Use [A-Z]* (or [A-Z]+) instead of [A-Za-z]*.
-    Need to match 'GFX' as well as 'gfx'? Compile with re.IGNORECASE.
-    """
-    gpu_family_pattern = re.compile(r"gfx(?:\d+[A-Za-z]*|\w+)")
+
+    # Regex: r"gfx(?:\d+[A-Za-z]*|\w+)"
+    # Matches "gfx" + digits with optional letters (e.g., gfx90a/gfx103) or a word token (e.g., gfx_ip).
+    # Tweaks: require letter -> [A-Za-z]+; uppercase-only -> [A-Z]* or [A-Z]+; digit-led only -> remove |\w+.
+    # Case-insensitive ("gfx"/"GFX"): add re.IGNORECASE.
+    # Examples: gfx90a, gfx1150, gfx_ip, gfxX.
+    gpu_family_pattern = re.compile(r"gfx(?:\d+[A-Za-z]*|\w+)", re.IGNORECASE)
     gpu_families = set()
     for file_name, _ in files:
         match = gpu_family_pattern.search(file_name)
@@ -89,10 +90,16 @@ def generate_index_s3(s3_client, bucket_name, upload=False):
 
     # Prepare filter options and files array for JS
     gpu_families = extract_gpu_details(files)
+    message = (
+        f"Detected GPU families ({len(gpu_families)}): "
+        f"{', '.join(gpu_families) if gpu_families else 'none'}"
+    )
+    gha_append_step_summary(message)
     gpu_families_options = "".join(
         [f'<option value="{family}">{family}</option>' for family in gpu_families]
     )
     files_js_array = json.dumps([{"name": f[0], "mtime": f[1]} for f in files])
+    gha_append_step_summary(f"Found {len(files)} .tar.gz files in bucket '{bucket_name}'.")
 
     # HTML content for displaying files
     html_content = f"""
@@ -180,7 +187,15 @@ def generate_index_s3(s3_client, bucket_name, upload=False):
                 "index.html",
                 ExtraArgs={"ContentType": "text/html"},
             )
-            message = "index.html successfully uploaded to the bucket root."
+            
+            # Generate a presigned URL (time-limited) using boto3
+            presigned_url = s3_client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": bucket_name, "Key": "index.html"},
+                ExpiresIn=3600,
+            )
+
+            message = f"index.html successfully uploaded. URL: {presigned_url}"
             gha_append_step_summary(message)
 
         except ClientError as e:
@@ -206,7 +221,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate index.html for S3 bucket .tar.gz files"
     )
-    parser.add_argument("--bucket", required=True, help="S3 bucket name")
+    parser.add_argument(
+        "--bucket",
+        default="therock-dev-tarball",
+        help="S3 bucket name (default: therock-dev-tarball)",
+    )
     parser.add_argument("--region", default="us-east-2", help="AWS region name")
     parser.add_argument(
         "--upload",
