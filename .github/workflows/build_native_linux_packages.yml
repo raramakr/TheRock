@@ -87,7 +87,6 @@ jobs:
             --run-id=${{ env.ARTIFACT_RUN_ID }} \
             --run-github-repo="ROCm/TheRock" \
             --target=${{ inputs.amdgpu_family }} \
-            --all \
             --output-dir=${{ env.ARTIFACTS_DIR }}
 
       - name: Build Packages
