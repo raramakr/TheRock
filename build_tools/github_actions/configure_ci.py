@@ -216,7 +216,7 @@ def matrix_generator(
     base_args={},
     families={},
     platform="linux",
-) -> Tuple[List, List[str]]:
+):
     """
     Generates a matrix of "family" and "test-runs-on" parameters based on the workflow inputs.
     Second return value is a list of test names to run, if any.
