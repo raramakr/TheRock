@@ -1,10 +1,11 @@
 # Use LLVM tools for stripping / objcopy
 %global __strip   /usr/bin/llvm-strip
 %global __objcopy /usr/bin/llvm-objcopy
-
-
 %global _debugsource_template %{nil}
-%global debug_package %{nil}          # disables -debuginfo
+%global debug_package %{nil}          # disables -debuginfo        :
+#{% if disable_debug_package %}
+#{% endif %}
+
 %define __brp_mangle_shebangs %{nil}
 
 Name: {{ pkg_name }}
@@ -42,3 +43,4 @@ cp -R {{ path }}/* $RPM_BUILD_ROOT{{ install_prefix }}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
+

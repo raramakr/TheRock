@@ -356,7 +356,7 @@ def package_with_dpkg_build(pkg_dir):
     current_dir = Path.cwd()
     os.chdir(Path(pkg_dir))
     # Build the command
-    cmd = ["dpkg-buildpackage", "-uc", "-us", "-b"]
+    cmd = ["env", "DH_VERBOSE=1", "DEB_BUILD_OPTIONS=verbose", "dpkg-buildpackage", "-uc", "-us", "-b", "-D", "--no-sign"]
 
     # Execute the command
     try:
@@ -496,6 +496,7 @@ def generate_spec_file(pkg_name, specfile, config: PackageConfig):
         "install_prefix": config.install_prefix,
         "requires": requires,
         "rpmrecommends": rpmrecommends,
+        "disable_debug_package": is_debug_package_disabled(pkginfo),
         "sourcedir_list": sourcedir_list,
     }
 
@@ -673,7 +674,7 @@ def filter_components_fromartifactory(pkg_name, artifacts_dir, gfx_arch):
     print(inspect.currentframe().f_code.co_name)
 
     pkg_info = get_package_info(pkg_name)
-    is_composite = is_key_defined(pkg_info, "composite")
+    is_composite = is_composite_package(pkg_info)
     sourcedir_list = []
     component_list = pkg_info.get("Components", [])
     artifact_prefix = pkg_info.get("Artifact")
@@ -729,7 +730,7 @@ def parse_input_package_list(pkg_name):
             continue
 
         name = entry.get("Package")
-        is_composite = is_key_defined(entry, "composite")
+        is_composite = is_composite_package(entry)
 
         # Loop through each type in pkg_name
         for pkg in pkg_name:

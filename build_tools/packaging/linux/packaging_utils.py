@@ -16,6 +16,10 @@ def read_package_json_file():
     file_path = SCRIPT_DIR / "package.json"
     with file_path.open("r", encoding="utf-8") as file:
         data = json.load(file)
+
+    if isinstance(data, list):
+        print(f"Number of entries: {len(data)}")
+
     return data
 
 
@@ -66,6 +70,33 @@ def is_key_defined(pkg_info, key):
         "n/a",
     ):
         return False
+
+
+def is_composite_package(pkg_info):
+    """
+    Verifies whether composite key is enabled for a package.
+
+    Parameters:
+    pkg_info (dict): A dictionary containing package details.
+
+    Returns:
+    bool: True if composite key is defined, False otherwise.
+    """
+
+    return is_key_defined(pkg_info, "composite")
+
+def is_debug_package_disabled(pkg_info):
+    """
+    Verifies whether composite key is enabled for a package.
+
+    Parameters:
+    pkg_info (dict): A dictionary containing package details.
+
+    Returns:
+    bool: True if composite key is defined, False otherwise.
+    """
+
+    return is_key_defined(pkg_info, "Disable_Debug_Package")
 
 
 def get_package_info(pkgname):
