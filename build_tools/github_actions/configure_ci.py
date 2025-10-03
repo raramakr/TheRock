@@ -217,7 +217,10 @@ def matrix_generator(
     families={},
     platform="linux",
 ) -> Tuple[List, List[str]]:
-    """Generates a matrix of "family" and "test-runs-on" parameters based on the workflow inputs."""
+    """
+    Generates a matrix of "family" and "test-runs-on" parameters based on the workflow inputs.
+    Second return value is a list of test names to run, if any.
+    """
 
     # Select target names based on inputs. Targets will be filtered by platform afterwards.
     selected_target_names = []

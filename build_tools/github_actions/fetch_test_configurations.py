@@ -132,6 +132,7 @@ def run():
     platform = os.getenv("RUNNER_OS").lower()
     project_to_test = os.getenv("project_to_test", "*")
     amdgpu_families = os.getenv("AMDGPU_FAMILIES")
+    test_labels = json.loads(os.getenv("TEST_LABELS", "[]"))
 
     logging.info(f"Selecting projects: {project_to_test}")
 
@@ -145,6 +146,13 @@ def run():
         ):
             logging.info(
                 f"Excluding job {job_name} for platform {platform} and family {amdgpu_families}"
+            )
+            continue
+
+        # If test labels are populated, and the test job name is not in the test labels, skip the test
+        if test_labels and key not in test_labels:
+            logging.info(
+                f"Excluding job {job_name} since it's not in the test labels"
             )
             continue
 
