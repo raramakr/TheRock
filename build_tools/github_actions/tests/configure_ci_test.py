@@ -278,5 +278,6 @@ class ConfigureCITest(unittest.TestCase):
         )
         self.assertEqual(windows_test_labels, [])
 
+
 if __name__ == "__main__":
     unittest.main()
