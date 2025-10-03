@@ -154,7 +154,9 @@ def retrieve_artifacts_by_run_id(args):
 
     if args.base_only:
         argv.extend(base_artifact_patterns)
-    elif any([args.blas, args.fft, args.hipdnn, args.miopen, args.prim, args.rand, args.rccl]):
+    elif any(
+        [args.blas, args.fft, args.hipdnn, args.miopen, args.prim, args.rand, args.rccl]
+    ):
         argv.extend(base_artifact_patterns)
 
         extra_artifacts = []
