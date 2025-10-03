@@ -144,6 +144,11 @@ negative_filter.append("Full/GPU_ConvGrpActivInfer3D_BFP16")  # 0 min 27 sec
 negative_filter.append("Full/GPU_ConvGrpActivInfer3D_FP32")  # 0 min 22 sec
 negative_filter.append("Full/GPU_ConvGrpActivInfer3D_FP16")  # 0 min 16 sec
 
+# Flaky tests
+negative_filter.append(
+    "Smoke/GPU_UnitTestConvSolverHipImplicitGemmV4R1Fwd_BFP16.ConvHipImplicitGemmV4R1Fwd/0"
+)  # https://github.com/ROCm/TheRock/issues/1682
+
 ####################################################
 
 gtest_final_filter_cmd = (
