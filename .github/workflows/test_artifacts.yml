@@ -12,6 +12,8 @@ on:
         type: string
       test_type:
         type: string
+      platform:
+        type: string
   workflow_call:
     inputs:
       artifact_run_id:
@@ -22,6 +24,8 @@ on:
       test_runs_on:
         type: string
       test_type:
+        type: string
+      platform:
         type: string
   push:
     branches:
@@ -36,6 +40,14 @@ jobs:
     # if there is a test machine available
     if: ${{ inputs.test_runs_on != '' }}
     runs-on: ${{ inputs.test_runs_on }}
+    container:
+      image: ${{ inputs.platform == 'linux' && 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:4150afe4759d14822f0e3f8930e1124f26e11f68b5c7b91ec9a02b20b1ebbb98' || null }}
+      options: --ipc host
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --group-add 992
+        --env-file /etc/podinfo/gha-gpu-isolation-settings
     outputs:
       components: ${{ steps.configure.outputs.components }}
       platform: ${{ steps.configure.outputs.platform }}
