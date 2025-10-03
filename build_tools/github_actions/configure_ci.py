@@ -188,21 +188,26 @@ def get_pr_labels(args) -> List[str]:
     return labels
 
 
-def filter_known_names(
-    requested_names: List[str], known_names_matrix: set, name_type: str
-) -> List[str]:
+def filter_known_names(requested_names: List[str], name_type: str) -> List[str]:
     """Filters a requested names list down to known names."""
+    known_references = {
+        "target": amdgpu_family_info_matrix_all,
+        "test": test_matrix,
+    }
     filtered_names = []
+    if name_type not in known_references:
+        print(f"WARNING: unknown name_type '{name_type}'")
+        return filtered_names
     for name in requested_names:
         # Standardize on lowercase names.
         # This helps prevent potential user-input errors.
         name = name.lower()
 
-        if name in known_names_matrix:
+        if name in known_references[name_type]:
             filtered_names.append(name)
         else:
             print(
-                f"WARNING: unknown {name_type} name '{name}' not found in matrix:\n{known_names_matrix}"
+                f"WARNING: unknown {name_type} name '{name}' not found in matrix:\n{known_references[name_type]}"
             )
 
     return filtered_names
@@ -242,7 +247,7 @@ def matrix_generator(
 
         selected_target_names.extend(
             filter_known_names(
-                requested_target_names, amdgpu_family_info_matrix_all, "target"
+                requested_target_names, "target"
             )
         )
 
@@ -268,11 +273,11 @@ def matrix_generator(
                 requested_test_names.append(test)
         selected_target_names.extend(
             filter_known_names(
-                requested_target_names, amdgpu_family_info_matrix_all, "target"
+                requested_target_names, "target"
             )
         )
         selected_test_names.extend(
-            filter_known_names(requested_test_names, test_matrix, "test")
+            filter_known_names(requested_test_names, "test")
         )
 
     if is_push and base_args.get("branch_name") == "main":
