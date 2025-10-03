@@ -296,11 +296,15 @@ therock_add_feature(MIOPEN
   DESCRIPTION "Enables the MIOpen project (with minimal deps defaults to ON)"
   REQUIRES COMPILER HIP_RUNTIME BLAS RAND ${_optional_profiler_requirements}
 )
-therock_add_feature(HIPDNN
-  GROUP ML_LIBS
-  DESCRIPTION "Enables the hipDNN project"
-  REQUIRES COMPILER HIP_RUNTIME
-)
+
+#hipDNN on Windows is disabled for now, but will be enabled in a follow-up change.
+if(NOT WIN32)
+  therock_add_feature(HIPDNN
+    GROUP ML_LIBS
+    DESCRIPTION "Enables the hipDNN project"
+    REQUIRES COMPILER HIP_RUNTIME
+  )
+endif()
 
 # Finalize all feature flags.
 therock_finalize_features()
