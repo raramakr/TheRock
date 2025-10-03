@@ -206,7 +206,7 @@ class ConfigureCITest(unittest.TestCase):
 
     def test_valid_test_label_linux_pull_request_matrix_generator(self):
         base_args = {
-            "pr_labels": '{"labels":[{"name":"test:hipblas"}]},{"name":"test:rocblas"}]}'
+            "pr_labels": '{"labels":[{"name":"test:hipblas"},{"name":"test:rocblas"}]}'
         }
         linux_target_output, linux_test_labels = configure_ci.matrix_generator(
             is_pull_request=True,
@@ -227,7 +227,7 @@ class ConfigureCITest(unittest.TestCase):
 
     def test_invalid_test_label_linux_pull_request_matrix_generator(self):
         base_args = {
-            "pr_labels": '{"labels":[{"name":"test:hipchalk"}]},{"name":"test:rocchalk"}]}'
+            "pr_labels": '{"labels":[{"name":"test:hipchalk"},{"name":"test:rocchalk"}]}'
         }
         linux_target_output, linux_test_labels = configure_ci.matrix_generator(
             is_pull_request=True,
