@@ -148,3 +148,25 @@ if(THEROCK_INCLUDE_CLANG_RESOURCE_DIR_RPATH)
     message(STATUS "Added clang resource dir to RPATH: ${_prefix_resource_dir} (since sanitizer enabled)")
   endblock()
 endif()
+
+# Setup THEROCK_SANITIZER_LAUNCHER.
+block(PROPAGATE THEROCK_SANITIZER_LAUNCHER)
+  set(THEROCK_SANITIZER_LAUNCHER)
+  if(LINUX AND THEROCK_SANITIZER STREQUAL "ASAN")
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")
+      set(_arch_suffix "x86_64")
+    else()
+      message(FATAL_ERROR "Unknown processor ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} "--print-file-name=libclang_rt.asan-${_arch_suffix}.so"
+      OUTPUT_VARIABLE _rt_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    set(THEROCK_SANITIZER_LAUNCHER
+      "${CMAKE_COMMAND}" -E env "LD_PRELOAD=${_rt_path}" --
+    )
+    message(STATUS "Sanitizer launcher: ${THEROCK_SANITIZER_LAUNCHER}")
+  endif()
+endblock()
