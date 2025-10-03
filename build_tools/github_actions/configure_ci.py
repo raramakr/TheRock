@@ -267,7 +267,7 @@ def matrix_generator(
                 target, _ = label.split("-")
                 requested_target_names.append(target)
             if "test:" in label:
-                test, _ = label.split(":")
+                _, test = label.split(":")
                 requested_test_names.append(test)
         selected_target_names.extend(
             filter_known_names(requested_target_names, "target")
