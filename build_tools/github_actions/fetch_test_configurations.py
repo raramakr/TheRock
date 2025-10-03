@@ -151,9 +151,7 @@ def run():
 
         # If test labels are populated, and the test job name is not in the test labels, skip the test
         if test_labels and key not in test_labels:
-            logging.info(
-                f"Excluding job {job_name} since it's not in the test labels"
-            )
+            logging.info(f"Excluding job {job_name} since it's not in the test labels")
             continue
 
         # If the test is enabled for a particular platform and a particular (or all) projects are selected
