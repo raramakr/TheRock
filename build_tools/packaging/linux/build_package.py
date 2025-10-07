@@ -356,7 +356,7 @@ def package_with_dpkg_build(pkg_dir):
     current_dir = Path.cwd()
     os.chdir(Path(pkg_dir))
     # Build the command
-    cmd = ["env", "DH_VERBOSE=1", "DEB_BUILD_OPTIONS=verbose", "dpkg-buildpackage", "-uc", "-us", "-b", "-D", "--no-sign"]
+    cmd = ["env", "DH_VERBOSE=1", "DEB_BUILD_OPTIONS=verbose", "dpkg-buildpackage", "-b", "-D", "--no-sign"]
 
     # Execute the command
     try:
