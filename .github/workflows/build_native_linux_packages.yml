@@ -76,6 +76,7 @@ jobs:
           python-version: '3.12'
       - name: Install Python requirements
         run: |
+          python3 -m venv .venv && source .venv/bin/activate
           pip install pyelftools boto3 jinja2
           sudo apt install -y llvm debhelper-compat build-essential
 
@@ -99,7 +100,8 @@ jobs:
             --target ${{ inputs.amdgpu_family }} \
             --artifacts-dir ${{ env.ARTIFACTS_DIR }} \
             --pkg-type ${{ inputs.package_type }} \
-            --version-suffix ${{ inputs.package_suffix }}
+            --version-suffix ${{ inputs.package_suffix }} \
+            --pkg-names rocm-core
 
       - name: Upload Packages
         id: upload-packages
