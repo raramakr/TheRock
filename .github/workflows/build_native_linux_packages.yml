@@ -83,6 +83,7 @@ jobs:
       - name: Fetch Artifacts
         # TODO: Currently fetch artifacts is part of build package itself. Need to seperate it out
         run: |
+          pip install pyelftools boto3 jinja2
           echo "Fetching artifacts for build ${{ inputs.artifact_run_id }}"
           python ./build_tools/fetch_artifacts.py \
             --run-id=${{ env.ARTIFACT_RUN_ID }} \
