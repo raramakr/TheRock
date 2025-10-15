@@ -1,5 +1,4 @@
 # ROCm Native Packaging via TheRock
-
 Given ROCk artifact directories, perform surgery to re-layout them for
 distribution as Debian and RPM packages.
 
@@ -25,6 +24,7 @@ We generate two types of packages:
 
 The generated packages are moved to the destination directory.
 
+## Workflow
 ![Building Package](assets/native_packaging.drawio.svg#gh-light-mode-only)
 ![Building Package (dark)](assets/native_packaging.drawio.svg#gh-dark-mode-only)
 
@@ -111,7 +111,45 @@ apt update<br>
 apt install -y python3<br>
 apt install -y python3-pip<br>
 apt install -y debhelper<br>
+apt install -y llvm<br>
 pip install -r requirements.txt<br>
 
-### Testing
-TODO
+### Usage
+RPM package:<br>
+```bash
+./build_package.py \
+   --artifacts-dir ./ARTIFACTS_DIR \
+   --target gfx94X-dcgpu \
+   --dest-dir ./OUTPUT_PKG \
+   --rocm-version 7.1.0 \
+   --pkg-type rpm
+```
+Debian package:<br>
+```bash
+./build_package.py \
+   --artifacts-dir ./ARTIFACTS_DIR \
+   --target gfx94X-dcgpu \
+   --dest-dir ./OUTPUT_PKG \
+   --rocm-version 7.1.0 \
+   --pkg-type deb
+```
+Debian RPATH package:<br>
+```bash
+./build_package.py \
+   --artifacts-dir ./ARTIFACTS_DIR \
+   --target gfx94X-dcgpu \
+   --dest-dir ./OUTPUT_PKG \
+   --rocm-version 7.1.0 \
+   --pkg-type deb \
+   --rpath-pkg True
+```
+Debian package with Version suffix:<br>
+```bash
+./build_package.py \
+   --artifacts-dir ./ARTIFACTS_DIR \
+   --target gfx94X-dcgpu \
+   --dest-dir ./OUTPUT_PKG \
+   --rocm-version 7.1.0 \
+   --pkg-type deb \
+   --version-suffix crdnnh.17421247050
+```
